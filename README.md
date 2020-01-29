@@ -3,9 +3,9 @@
 # pyGPSO
 *Optimise anything (but mainly large-scale biophysical models) using Gaussian Processes surrogate*
 
-`pyGPSO` is python package for Gaussian-Processes Surrogate Optimisation. GPSO is an Bayesian optimisation method designed to cope with costly, high-dimensional, non-convex problems by switching between exploration of the parameter space (using partition tree) and exploitation of the gather knowledge (by training the surrogate function using Gaussian Processes regression). This package leverages [`GPFlow`](https://github.com/GPflow/GPflow) for training and predicting the Gaussian Processes surrogate.
+`pyGPSO` is a python package for Gaussian-Processes Surrogate Optimisation. GPSO is a Bayesian optimisation method designed to cope with costly, high-dimensional, non-convex problems by switching between exploration of the parameter space (using partition tree) and exploitation of the gathered knowledge (by training the surrogate function using Gaussian Processes regression). The motivation for this method stems from the optimisation of large-scale biophysical models in neuroscience when the modelled data should match the experimental one. This package leverages [`GPFlow`](https://github.com/GPflow/GPflow) for training and predicting the Gaussian Processes surrogate.
 
-This is port of original [matlab implementation](https://github.com/jhadida/gpso) by the paper's author.
+This is port of original [Matlab implementation](https://github.com/jhadida/gpso) by the paper's author.
 
 **Reference**: Hadida, J., Sotiropoulos, S. N., Abeysuriya, R. G., Woolrich, M. W., & Jbabdi, S. (2018). Bayesian Optimisation of Large-Scale Biophysical Networks. NeuroImage, 174, 219-236.
 
@@ -29,7 +29,7 @@ pip install pygpso
 and go ahead! Make sure to check [example notebook](examples/optimisation_example.ipynb) how it works and what it can do.
 
 ### Go proper
-When you are the type of girl or guy who like to install packages in a proper way, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
+When you are the type of girl or guy who likes to install packages properly, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
 ```bash
 git clone https://github.com/jajcayn/pygpso
 cd pygpso/
@@ -42,7 +42,7 @@ pytest tests/
 ```
 
 ## Usage
-A guide how to optimise using this package is given as a [jupyter nootebok](examples/optimisation_example.ipynb).
+A guide on how to optimise using this package is given as a [jupyter notebook](examples/optimisation_example.ipynb).
 The basic idea is to initialise the parameter space in which the optimisation is to be run and then iteratively dig deeper and evaluate the objective function when necessary
 ```python
 from gpso.param_space import ParameterSpace
@@ -73,7 +73,7 @@ The package offers plotting functions for visualising the results. Again, those 
     * the plan is to solve saving of the surrogate object and its state, then it will be easy to resume the optimisation from the saved state
 
 ## Final notes
-When you encounter a bug, or have any idea for an improvement, please open an issue and / or contact me.
+When you encounter a bug or have any idea for an improvement, please open an issue and/or contact me.
 
 When using this package in publications, please cite the original Jonathan's paper as
 ```bibtex
