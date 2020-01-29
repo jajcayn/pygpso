@@ -1,0 +1,13 @@
+numpy
+json5
+anytree
+pathos
+scipy
+scikit-learn
+matplotlib
+python-igraph
+flake8
+pytest
+black
+gast==0.2.2  # tensorflow 2.1.0 explicitely needs gast 0.2.2
+git+https://github.com/GPflow/GPflow.git@develop#egg=gpflow
