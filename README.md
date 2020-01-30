@@ -21,16 +21,16 @@ Example of ternary partition tree after optimisation.
 
 ## Installation
 
-### One-liner (currently does not work!)
-Currently not working, see "Known bugs and future improvements".
+### One-liner
+Installation from PyPI is not possible, as `GPFlow` 2.0 is not on PyPI yet.
 
 For those who want to optimise right away just
 ```bash
-pip install pygpso
+pip install git+https://github.com/jajcayn/pygpso
 ```
 and go ahead! Make sure to check [example notebook](examples/optimisation_example.ipynb) how it works and what it can do.
 
-### Go proper (currently only way to do it)
+### Go proper
 When you are the type of girl or guy who likes to install packages properly, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
 ```bash
 git clone https://github.com/jajcayn/pygpso
@@ -68,7 +68,7 @@ best_point = opt.run(objective_function)
 The package offers plotting functions for visualising the results. Again, those are documented and showcased in the [example notebook](examples/optimisation_example.ipynb).
 
 ## Known bugs and future improvements
-* currently cannot be installed through `pip`, since `GPFlow` 2.0 is not on PyPI yet
+* currently cannot be installed through `pip` from PyPI, since `GPFlow` 2.0 is not on PyPI yet
 * saving and resuming of the optimisation
     * right now the parameter space and its state can be saved into binary `pkl` file
     * however, the surrogate and its state cannot - this is mainly due to usage of `GPFlow` 2.0 which is not officially released as of now and hopefully this will change in the future (in `GPFlow` 2.0 the `saver` module from previous versions is missing)
