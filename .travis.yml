@@ -6,8 +6,12 @@ python:
 
 install:
   - pip install -r requirements.txt
+  - pip install codecov pytest-cov
   - pip install .
 
 script:
-  - pytest tests/
+  - PYTHONPATH=. pytest --cov=gpso tests .
   - flake8 . --exit-zero
+
+after_success:
+  - codecov
