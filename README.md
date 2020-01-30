@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/jajcayn/pygpso.svg?branch=master)](https://travis-ci.com/jajcayn/pygpso) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Build Status](https://travis-ci.com/jajcayn/pygpso.svg?branch=master)](https://travis-ci.com/jajcayn/pygpso) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # pyGPSO
 *Optimise anything (but mainly large-scale biophysical models) using Gaussian Processes surrogate*
