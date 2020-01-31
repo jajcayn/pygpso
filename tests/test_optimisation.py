@@ -91,7 +91,7 @@ class TestGPSOptimiser(unittest.TestCase):
             ),
         )
         np.testing.assert_almost_equal(
-            self.BEST_COORDS_v2, best_point.normed_coord
+            self.BEST_COORDS_v2, best_point.normed_coord, decimal=4
         )
         self.assertEqual(
             np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v2
