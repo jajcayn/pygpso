@@ -344,6 +344,9 @@ class GPSurrogate:
         """
         # retrain the GPR
         x_train, y_train = self.current_training_data
+        logging.debug(
+            f"Retraining GPR with x data: {x_train}; y data: {y_train}"
+        )
         self._gp_train(x=x_train, y=y_train[:, np.newaxis])
         # reevaluate GP-based samples
         if self.num_gp_based > 0:
