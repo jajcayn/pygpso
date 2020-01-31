@@ -76,8 +76,8 @@ class TestGPSOptimiser(unittest.TestCase):
         opt = GPSOptimiser(
             parameter_space=space,
             exploration_method="sample",
-            exploration_depth=10,
-            budget=14,
+            exploration_depth=3,
+            budget=12,
             stopping_condition="iterations",
             update_cycle=1,
             gp_lik_sigma=1.0e-3,
