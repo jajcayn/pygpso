@@ -69,7 +69,6 @@ class TestGPSOptimiser(unittest.TestCase):
         """
         With sample method, for 13 iterations, 2 workers and custom init sample.
         """
-        np.random.seed(42)
         space = ParameterSpace(
             parameter_names=["x", "y"],
             parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
@@ -77,7 +76,7 @@ class TestGPSOptimiser(unittest.TestCase):
         opt = GPSOptimiser(
             parameter_space=space,
             exploration_method="sample",
-            exploration_depth=3,
+            exploration_depth=10,
             budget=14,
             stopping_condition="iterations",
             update_cycle=1,
@@ -89,9 +88,10 @@ class TestGPSOptimiser(unittest.TestCase):
             init_samples=np.array(
                 [[-1.0, 0.0], [1.0, 0.0], [-1.5, 1], [1.5, 1]]
             ),
+            seed=42,
         )
         np.testing.assert_almost_equal(
-            self.BEST_COORDS_v2, best_point.normed_coord, decimal=4
+            self.BEST_COORDS_v2, best_point.normed_coord
         )
         self.assertEqual(
             np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v2
