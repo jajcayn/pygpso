@@ -8,9 +8,9 @@ import unittest
 from copy import deepcopy
 from shutil import rmtree
 
-import numpy as np
-
 import gpflow
+import numpy as np
+import pytest
 from gpso.gp_surrogate import (
     DUPLICATE_TOLERANCE,
     GPListOfPoints,
@@ -18,12 +18,13 @@ from gpso.gp_surrogate import (
     GPSurrogate,
     PointLabels,
 )
+from gpso.utils import JSON_EXT
 from scipy.special import erfcinv
 
 
 class TestGPListOfPoints(unittest.TestCase):
 
-    TEMP_FILENAME = "test.json"
+    TEMP_FILENAME = "test"
 
     def _make_random_gp_points(self, n_points=1, ndim=2):
         points = []
@@ -100,7 +101,7 @@ class TestGPListOfPoints(unittest.TestCase):
         loaded = GPListOfPoints.from_file(self.TEMP_FILENAME)
         self.assertTrue(isinstance(loaded, GPListOfPoints))
         self.assertListEqual(gp_list, loaded)
-        os.remove(self.TEMP_FILENAME)
+        os.remove(self.TEMP_FILENAME + JSON_EXT)
 
     def test_find_by_coords(self):
         N_POINTS = 10
@@ -242,17 +243,18 @@ class TestGPSurrogate(unittest.TestCase):
         # assert no point was added
         self.assertEqual(len(self.gp_surr.points), NUM_INIT_POINTS)
 
-    @unittest.skip("saving GPFlow model not implemented")
     def test_save_load(self):
         NUM_INIT_POINTS = 10
         # create class and train the GPR
         self._create_gpsurrogate(init_points=NUM_INIT_POINTS, seed=42)
         x_train, y_train = self.gp_surr.current_training_data
         self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
-        # save class (model and list of points)
-        self.gp_surr.save(self.TEMP_FOLDER)
-        # TODO finish once saving/loading is ok
-        rmtree(self.TEMP_FOLDER)
+        # currently test whether it correctly raises exception
+        with pytest.raises(NotImplementedError):
+            # save class (model and list of points)
+            self.gp_surr.save(self.TEMP_FOLDER)
+            # TODO finish once saving/loading is ok
+            rmtree(self.TEMP_FOLDER)
 
 
 if __name__ == "__main__":

@@ -6,15 +6,15 @@ import os
 import unittest
 
 import numpy as np
-
 from anytree import PreOrderIter
 from gpso.param_space import NORM_PARAMS_BOUNDS, LeafNode, ParameterSpace
+from gpso.utils import PKL_EXT
 from sklearn.preprocessing import MinMaxScaler
 
 
 class TestParameterSpace(unittest.TestCase):
 
-    TEMP_FILENAME = "test.pkl"
+    TEMP_FILENAME = "test"
     BEST_SCORE = 20.1
     ROOT_SCORE = 10.2
     parameter_names = ["sigma", "xi"]
@@ -169,7 +169,7 @@ class TestParameterSpace(unittest.TestCase):
                 )
             )
         )
-        os.remove(self.TEMP_FILENAME)
+        os.remove(self.TEMP_FILENAME + PKL_EXT)
 
     def test_sample_uniformly(self):
         N_POINTS = 50

@@ -14,8 +14,11 @@ class TestGPSOptimiser(unittest.TestCase):
 
     X_BOUNDS = [-3, 5]
     Y_BOUNDS = [-3, 3]
-    BEST_COORDS = np.array([0.23525377, 0.68518519])
-    BEST_SCORE = 8.10560594
+    # very slightly different scores and coordinates
+    BEST_COORDS_v1 = np.array([0.23525377, 0.68518519])
+    BEST_SCORE_v1 = 8.10560594
+    BEST_COORDS_v2 = np.array([0.2283951, 0.68518519])
+    BEST_SCORE_v2_min = 8
 
     @staticmethod
     def _obj_func(point):
@@ -36,7 +39,10 @@ class TestGPSOptimiser(unittest.TestCase):
         )
 
     # WARNING: runs approx. 13 seconds
-    def test_optimise(self):
+    def test_optimise_v1(self):
+        """
+        With tree method, for 50 evaluations, 1 worker and default init sample.
+        """
         space = ParameterSpace(
             parameter_names=["x", "y"],
             parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
@@ -53,11 +59,43 @@ class TestGPSOptimiser(unittest.TestCase):
         )
         best_point = opt.run(self._obj_func)
         np.testing.assert_almost_equal(
-            self.BEST_COORDS, best_point.normed_coord
+            self.BEST_COORDS_v1, best_point.normed_coord
         )
         self.assertEqual(
-            np.around(best_point.score_mu, decimals=8), self.BEST_SCORE
+            np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v1
         )
+
+    def test_optimise_v2(self):
+        """
+        With sample method, for 13 iterations, 2 workers and custom init sample.
+        """
+        space = ParameterSpace(
+            parameter_names=["x", "y"],
+            parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
+        )
+        opt = GPSOptimiser(
+            parameter_space=space,
+            exploration_method="sample",
+            exploration_depth=3,
+            budget=12,
+            stopping_condition="iterations",
+            update_cycle=1,
+            gp_lik_sigma=1.0e-3,
+            n_workers=2,
+        )
+        best_point = opt.run(
+            self._obj_func,
+            init_samples=np.array(
+                [[-1.0, 0.0], [1.0, 0.0], [-1.5, 1], [1.5, 1]]
+            ),
+            seed=42,
+        )
+        # test only y coordinate as x is different on different platforms and
+        # different python versions - difference is very small, do not worry
+        np.testing.assert_almost_equal(
+            self.BEST_COORDS_v2[1], best_point.normed_coord[1]
+        )
+        self.assertGreaterEqual(best_point.score_mu, self.BEST_SCORE_v2_min)
 
 
 if __name__ == "__main__":
