@@ -51,7 +51,9 @@ from gpso.param_space import ParameterSpace
 from gpso.optimisation import GPSOptimiser
 
 
-def objective_function(x, y):
+def objective_function(params):
+    # params as a list or tuple
+    x, y = params
     ...
     <some hardcore computation>
     ...
@@ -66,6 +68,9 @@ best_point = opt.run(objective_function)
 ```
 
 The package offers plotting functions for visualising the results. Again, those are documented and showcased in the [example notebook](examples/optimisation_example.ipynb).
+
+### Notes
+Gaussian Processes regression uses normalised coordinates within the bounds [0, 1]. All normalisation and de-normalisation is done automatically, however when you want to call `predict_y` on GPR model, do not forget to pass normalised coordinates. The normalisation is handled by `sklearn.MinMaxScaler` and `ParameterSpace` instance offers a convenience functions for this: `ParameterSpace.normalise_coords(orig_coords)` and `ParameterSpace.denormalise_coords(normed_coords)`.
 
 ## Known bugs and future improvements
 * currently cannot be installed through `pip` from PyPI, since `GPFlow` 2.0 is not on PyPI yet

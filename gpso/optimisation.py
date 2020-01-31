@@ -121,7 +121,7 @@ class GPSOptimiser:
             logging.info(
                 "Sampling 2 vertices per dimension within L1 ball of "
                 "0.25 of the domain size radius in normalised coordinates "
-                f"using {self.n_workers} workers..."
+                f"using {self.n_workers} worker(s)..."
             )
             # 2 vertices per dim at L1 ball with 1/4 of the domain size radius
             # in normed coords
