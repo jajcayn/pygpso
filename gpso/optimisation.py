@@ -211,13 +211,15 @@ class GPSOptimiser:
                     leaf.score = leaf_point.score_ucb
         return self.gp_surr.num_evaluated
 
-    def _tree_explore(self, levels_to_explore):
+    def _tree_explore(self, levels_to_explore, **kwargs):
         """
         Exploration step: split leaf into children and sample GP in the highest
         scored leaf in each level.
 
         :param levels_to_explore: which levels to explore
         :type levels_to_explore: list[bool]
+        :kwargs:
+            - "seed": seed for uniform sampler when sampling strategy is used
         """
         logging.info(
             "Exploration step: sampling children in the ternary tree..."
@@ -229,7 +231,9 @@ class GPSOptimiser:
             if self.method == "tree":
                 return child.grow(depth=self.max_depth)
             elif self.method == "sample":
-                return child.sample_uniformly(n_points=self.max_depth)
+                return child.sample_uniformly(
+                    n_points=self.max_depth, seed=kwargs.pop("seed", None)
+                )
 
         for level in range(self.param_space.max_depth + 1):
             if levels_to_explore[level]:
@@ -388,7 +392,7 @@ class GPSOptimiser:
         elif self.stop_cond == "depth":
             return self.param_space.max_depth <= self.budget
 
-    def run(self, objective_function, init_samples=None):
+    def run(self, objective_function, init_samples=None, **kwargs):
         """
         Run the optimisation.
 
@@ -402,6 +406,8 @@ class GPSOptimiser:
             points), or None - in that case the two vertices per dimension,
             equally spaced from the centre (diamond-shape)
         :type init_samples: np.ndarray|tuple(np.ndarray,np.ndarray)|None
+        :kwargs:
+            - "seed": seed for uniform sampler when sampling strategy is used
         :return: point with highest score of objective function
         :rtype: `gpso.gp_surrogate.GPPoint`
         """
@@ -422,7 +428,9 @@ class GPSOptimiser:
         iterations = 0
         while cond:
             # explore
-            self._tree_explore(levels_to_explore=explore_levels)
+            self._tree_explore(
+                levels_to_explore=explore_levels, seed=kwargs.pop("seed", None)
+            )
             # select
             explore_levels = self._tree_select()
             # update
