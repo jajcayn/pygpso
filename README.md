@@ -21,6 +21,8 @@ Example of ternary partition tree after optimisation.
 
 ## Installation
 
+`GPSO` package is tested and should run without any problems on python versions 3.6 and 3.7.
+
 ### One-liner
 Installation from PyPI is not possible, as `GPFlow` 2.0 is not on PyPI yet.
 
