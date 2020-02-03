@@ -6,6 +6,7 @@ python:
 
 install:
   - pip install -r requirements.txt
+  - pip install -r requirements_optional.txt
   - pip install codecov pytest-cov
   - pip install .
 
