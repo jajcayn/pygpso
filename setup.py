@@ -18,9 +18,16 @@ for requirement in requirements:
         requirement = f"{pkg_name.lower()} @ " + requirement
     checked_requirements.append(requirement)
 
+extra_requirements = {}
+with open("requirements_optional.txt") as f:
+    extra_reqs = f.read().splitlines()
+for req in extra_reqs:
+    pkg, feature = req.split("#")
+    extra_requirements[feature.strip()] = [pkg.strip()]
+
 setuptools.setup(
     name="pygpso",
-    version="0.2",
+    version="0.3",
     description="Bayesian optimisation method leveraging Gaussian Processes "
     "surrogate",
     long_description=long_description,
@@ -41,5 +48,6 @@ setuptools.setup(
     ],
     python_requires=">=3.6",
     install_requires=checked_requirements,
+    extras_require=extra_requirements,
     include_package_data=True,
 )

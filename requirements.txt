@@ -5,7 +5,6 @@ pathos
 scipy
 scikit-learn
 matplotlib
-python-igraph
 flake8
 pytest
 black

@@ -74,6 +74,8 @@ The package offers plotting functions for visualising the results. Again, those 
 ### Notes
 Gaussian Processes regression uses normalised coordinates within the bounds [0, 1]. All normalisation and de-normalisation is done automatically, however when you want to call `predict_y` on GPR model, do not forget to pass normalised coordinates. The normalisation is handled by `sklearn.MinMaxScaler` and `ParameterSpace` instance offers a convenience functions for this: `ParameterSpace.normalise_coords(orig_coords)` and `ParameterSpace.denormalise_coords(normed_coords)`.
 
+Plotting of the ternary tree (`gpso.plotting.plot_ternary_tree()`) requires `igraph` package, whose layout function is exploited. If you want to see the resulting beautiful tree, please install `python-igraph`.
+ 
 ## Known bugs and future improvements
 * currently cannot be installed through `pip` from PyPI, since `GPFlow` 2.0 is not on PyPI yet
 * saving and resuming of the optimisation

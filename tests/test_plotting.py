@@ -7,12 +7,12 @@ import unittest
 from shutil import rmtree
 
 import numpy as np
+import pytest
 from gpso.optimisation import GPSOptimiser
 from gpso.param_space import ParameterSpace
 from gpso.plotting import (
     plot_conditional_surrogate_distributions,
     plot_parameter_marginal_distributions,
-    plot_ternary_tree,
 )
 
 
@@ -78,6 +78,10 @@ class TestPlotting(unittest.TestCase):
         rmtree(cls.TEMP_FOLDER)
 
     def test_plot_ternary_tree(self):
+        _ = pytest.importorskip("igraph")
+
+        from gpso.plotting import plot_ternary_tree
+
         FILENAME = os.path.join(self.TEMP_FOLDER, "tree.png")
         plot_ternary_tree(
             self.opt_done.param_space, fname=FILENAME,
