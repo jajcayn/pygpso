@@ -6,7 +6,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from anytree import PreOrderIter
-from igraph import Graph
 from scipy.stats import gaussian_kde
 from sklearn.preprocessing import MinMaxScaler
 
@@ -53,6 +52,8 @@ def plot_ternary_tree(
     :type fname: str|None
     :*kwargs: keyword arguments for `plt.figure()`
     """
+    from igraph import Graph
+
     assert isinstance(param_space, ParameterSpace)
     leaves_preorder = list(PreOrderIter(param_space))
     # assign indexes in pre-order order to nodes
