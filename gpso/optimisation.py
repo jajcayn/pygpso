@@ -354,13 +354,18 @@ class GPSOptimiser:
             pool = None
             map_func = map
 
-        scores = list(map_func(self._obj_func_call, orig_coords))
+        # run for number of desired repeats
+        repeated_coords = np.vstack(self.eval_repeats * [orig_coords])
+        scores = list(map_func(self._obj_func_call, repeated_coords))
 
         if pool is not None:
             pool.close()
             pool.join()
 
-        return np.array(scores)
+        # update evaluation counter (not by repeats!)
+        self.n_eval_counter += orig_coords.shape[0]
+        # return mean over repeats
+        return np.array(scores).reshape((self.eval_repeats, -1)).mean(axis=0)
 
     def _obj_func_call(self, params):
         """
@@ -372,8 +377,9 @@ class GPSOptimiser:
         :return: score from the objective function
         :rtype: float
         """
+        # reseed the generator for parallel computing
+        np.random.seed()
         score = self.obj_func(params)
-        self.n_eval_counter += 1
         return float(score)
 
     def _stopping_condition(self, iteration):
@@ -392,7 +398,9 @@ class GPSOptimiser:
         elif self.stop_cond == "depth":
             return self.param_space.max_depth <= self.budget
 
-    def run(self, objective_function, init_samples=None, **kwargs):
+    def run(
+        self, objective_function, init_samples=None, eval_repeats=1, **kwargs
+    ):
         """
         Run the optimisation.
 
@@ -406,6 +414,11 @@ class GPSOptimiser:
             points), or None - in that case the two vertices per dimension,
             equally spaced from the centre (diamond-shape)
         :type init_samples: np.ndarray|tuple(np.ndarray,np.ndarray)|None
+        :param eval_repeats: number of repetitions for objective evaluation
+            function when it is stochastic and some statistics on the score is
+            necessary; repeats are not counted towards the budget of objective
+            evaluations; multiprocessing is used when self.n_workers > 1
+        :type eval_repeats: int
         :kwargs:
             - "seed": seed for uniform sampler when sampling strategy is used
         :return: point with highest score of objective function
@@ -413,6 +426,7 @@ class GPSOptimiser:
         """
         assert callable(objective_function)
         self.obj_func = objective_function
+        self.eval_repeats = eval_repeats
         logging.info(
             f"Starting {self.param_space.ndim}-dimensional optimisation with "
             f"budget of {self.budget} objective function evaluations..."
