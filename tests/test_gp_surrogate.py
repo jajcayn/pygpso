@@ -248,6 +248,10 @@ class TestGPSurrogate(unittest.TestCase):
             # TODO finish once saving/loading is ok
             rmtree(self.TEMP_FOLDER)
 
+        with pytest.raises(NotImplementedError):
+            # save class (model and list of points)
+            GPSurrogate.from_saved(self.TEMP_FOLDER)
+
 
 if __name__ == "__main__":
     unittest.main()

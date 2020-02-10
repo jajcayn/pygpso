@@ -101,6 +101,11 @@ class TestPlotting(unittest.TestCase):
             )
             self.assertTrue(os.path.exists(FILENAME))
 
+        with pytest.raises(ValueError):
+            plot_parameter_marginal_distributions(
+                self.opt_done, percentile=0.1, plot_type="abcd", fname=None,
+            )
+
     def test_plot_conditional_surrogate_distributions(self):
         FILENAME = os.path.join(self.TEMP_FOLDER, "cond_surr.png")
         plot_conditional_surrogate_distributions(
