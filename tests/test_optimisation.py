@@ -5,7 +5,7 @@ Test for the full optimisation run.
 import unittest
 
 import numpy as np
-
+from gpso.gp_surrogate import GPPoint
 from gpso.optimisation import GPSOptimiser
 from gpso.param_space import ParameterSpace
 
@@ -17,8 +17,6 @@ class TestGPSOptimiser(unittest.TestCase):
     # very slightly different scores and coordinates
     BEST_COORDS_v1 = np.array([0.23525377, 0.68518519])
     BEST_SCORE_v1 = 8.10560594
-    BEST_COORDS_v2 = np.array([0.2283951, 0.68518519])
-    BEST_SCORE_v2_min = 8
 
     @staticmethod
     def _obj_func(point):
@@ -81,21 +79,18 @@ class TestGPSOptimiser(unittest.TestCase):
             stopping_condition="iterations",
             update_cycle=1,
             gp_lik_sigma=1.0e-3,
-            n_workers=2,
+            n_workers=4,
         )
         best_point = opt.run(
             self._obj_func,
             init_samples=np.array(
                 [[-1.0, 0.0], [1.0, 0.0], [-1.5, 1], [1.5, 1]]
             ),
+            eval_repeats=4,
             seed=42,
         )
-        # test only y coordinate as x is different on different platforms and
-        # different python versions - difference is very small, do not worry
-        np.testing.assert_almost_equal(
-            self.BEST_COORDS_v2[1], best_point.normed_coord[1]
-        )
-        self.assertGreaterEqual(best_point.score_mu, self.BEST_SCORE_v2_min)
+        # non-deterministic test, test only whether it runs
+        self.assertTrue(isinstance(best_point, GPPoint))
 
 
 if __name__ == "__main__":
