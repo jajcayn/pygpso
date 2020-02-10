@@ -2,7 +2,6 @@
 Set of tests for GP surrogate and related code.
 """
 
-import logging
 import os
 import unittest
 from copy import deepcopy
@@ -81,15 +80,8 @@ class TestGPListOfPoints(unittest.TestCase):
             normed_coord=gp_list[POINT_IDX].normed_coord
             + np.array([DUPLICATE_TOLERANCE / 2.0, -DUPLICATE_TOLERANCE / 2.0])
         )
-        # assert log warning was issued when appending "new" point, which is
-        # actually a duplicate
-        root_logger = logging.getLogger()
-        with self.assertLogs(root_logger, level="WARNING") as cm:
-            gp_list.append(duplicate_point)
-        self.assertEqual(
-            cm.output,
-            ["WARNING:root:Duplicate found! Overwriting with newer point..."],
-        )
+
+        gp_list.append(duplicate_point)
         self.assertEqual(len(gp_list), N_POINTS)
         self.assertEqual(duplicate_point, gp_list[POINT_IDX])
         self.assertEqual(gp_list[POINT_IDX].score_mu, NEW_SCORE)

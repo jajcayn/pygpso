@@ -76,10 +76,6 @@ class GPListOfPoints(list):
                 # same, GP-based does not make sense
                 if self[idx].label == PointLabels.evaluated:
                     continue
-                # update current point
-                logging.warning(
-                    "Duplicate found! Overwriting with newer point..."
-                )
                 self[idx] = object
         if append_flag:
             super().append(object)
