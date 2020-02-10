@@ -50,6 +50,8 @@ class TestParameterSpace(unittest.TestCase):
             self.space.norm_bounds,
             [NORM_PARAMS_BOUNDS for _ in range(self.space.ndim)],
         )
+        str(self.space)
+        repr(self.space)
 
     def test_scaler(self):
         self._create_space()
