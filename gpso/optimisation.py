@@ -351,7 +351,7 @@ class GPSOptimiser:
             and (self.eval_repeats * orig_coords.shape[0]) > 1
         ):
             pool = ProcessPool(self.n_workers)
-            map_func = pool.imap
+            map_func = pool.map
         else:
             pool = None
             map_func = map
