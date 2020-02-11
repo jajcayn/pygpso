@@ -351,38 +351,29 @@ class GPSOptimiser:
             and (self.eval_repeats * orig_coords.shape[0]) > 1
         ):
             pool = ProcessPool(self.n_workers)
-            map_func = pool.map
+            map_func = pool.imap
         else:
             pool = None
             map_func = map
 
         # run for number of desired repeats
         repeated_coords = np.vstack(self.eval_repeats * [orig_coords])
-        scores = list(map_func(self._obj_func_call, repeated_coords))
+        scores = list(map_func(self.obj_func, repeated_coords))
 
         if pool is not None:
             pool.close()
             pool.join()
+            pool.clear()
 
         # update evaluation counter (not by repeats!)
         self.n_eval_counter += orig_coords.shape[0]
         # return mean over repeats
-        return np.array(scores).reshape((self.eval_repeats, -1)).mean(axis=0)
-
-    def _obj_func_call(self, params):
-        """
-        Objective function call.
-
-        :param params: parameters for the objective function - coordinates of
-            the domain
-        :type params: list|dict
-        :return: score from the objective function
-        :rtype: float
-        """
-        # reseed the generator for parallel computing
-        np.random.seed()
-        score = self.obj_func(params)
-        return float(score)
+        return (
+            np.array(scores)
+            .astype(np.float)
+            .reshape((self.eval_repeats, -1))
+            .mean(axis=0)
+        )
 
     def _stopping_condition(self, iteration):
         """

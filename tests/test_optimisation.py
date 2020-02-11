@@ -17,6 +17,7 @@ class TestGPSOptimiser(unittest.TestCase):
     # very slightly different scores and coordinates
     BEST_COORDS_v1 = np.array([0.23525377, 0.68518519])
     BEST_SCORE_v1 = 8.10560594
+    BEST_SCORE_v2 = 7.5
 
     @staticmethod
     def _obj_func(point):
@@ -91,6 +92,7 @@ class TestGPSOptimiser(unittest.TestCase):
         )
         # non-deterministic test, test only whether it runs
         self.assertTrue(isinstance(best_point, GPPoint))
+        self.assertGreaterEqual(best_point.score_mu, self.BEST_SCORE_v2)
 
 
 if __name__ == "__main__":
