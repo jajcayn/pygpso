@@ -346,7 +346,10 @@ class GPSOptimiser:
         assert orig_coords.ndim == 2
         assert orig_coords.shape[1] == self.param_space.ndim
 
-        if self.n_workers > 1 and orig_coords.shape[0] > 1:
+        if (
+            self.n_workers > 1
+            and (self.eval_repeats * orig_coords.shape[0]) > 1
+        ):
             pool = ProcessPool(self.n_workers)
             map_func = pool.imap
         else:
