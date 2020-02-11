@@ -6,9 +6,8 @@ import logging
 from collections import namedtuple
 from enum import Enum, unique
 
-import numpy as np
-
 import gpflow
+import numpy as np
 
 from .utils import JSON_EXT, load_json
 
