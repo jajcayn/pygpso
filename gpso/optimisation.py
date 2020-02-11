@@ -3,11 +3,10 @@ Optimisation using Bayesian GP regression leveraging GPFlow.
 """
 import logging
 
-import numpy as np
-
 import gpflow
+import numpy as np
 from anytree import PreOrderIter
-from pathos.multiprocessing import Pool
+from pathos.pools import ProcessPool
 from scipy.special import erfcinv
 
 from .gp_surrogate import GPPoint, GPSurrogate, PointLabels
@@ -348,8 +347,8 @@ class GPSOptimiser:
         assert orig_coords.shape[1] == self.param_space.ndim
 
         if self.n_workers > 1 and orig_coords.shape[0] > 1:
-            pool = Pool(self.n_workers)
-            map_func = pool.map
+            pool = ProcessPool(self.n_workers)
+            map_func = pool.imap
         else:
             pool = None
             map_func = map
