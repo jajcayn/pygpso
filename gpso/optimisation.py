@@ -63,6 +63,9 @@ class GPSOptimiser:
         :type n_workers: int
         :**kwargs: keyword arguments
             - `gp_kernel`: covariance kernel for GPR, Matern52 by default
+            - `gp_kernel_ARD`: whether to use ARD for lengthscales in the GPR
+                kernel, by default False (usually worse, but for large
+                dimensions might help)
             - `gp_meanf`: mean function for GPR, constant by default
             - `gp_mu`: initial value for constant mean function in GPR
             - `gp_length`: initial value for lengthscales in the kernel
@@ -89,13 +92,17 @@ class GPSOptimiser:
         self.n_workers = n_workers
 
         # GPR model hyperparameters
+        multiplier = (
+            self.param_space.ndim if kwargs.pop("gp_kernel_ARD", False) else 1
+        )
+        lengthscales_prior = multiplier * [
+            kwargs.pop("gp_length", np.sum(NORM_PARAMS_BOUNDS) * 0.25)
+        ]
         self.gp_surr = GPSurrogate(
             gp_kernel=kwargs.pop(
                 "gp_kernel",
                 gpflow.kernels.Matern52(
-                    lengthscale=kwargs.pop(
-                        "gp_length", np.sum(NORM_PARAMS_BOUNDS) * 0.25
-                    ),
+                    lengthscale=lengthscales_prior,
                     variance=kwargs.pop("gp_var", 1.0),
                 ),
             ),
