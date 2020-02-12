@@ -2,6 +2,7 @@
 Optimisation using Bayesian GP regression leveraging GPFlow.
 """
 import logging
+from functools import partial
 
 import gpflow
 import numpy as np
@@ -63,6 +64,9 @@ class GPSOptimiser:
         :type n_workers: int
         :**kwargs: keyword arguments
             - `gp_kernel`: covariance kernel for GPR, Matern52 by default
+            - `gp_kernel_ARD`: whether to use ARD for lengthscales in the GPR
+                kernel, by default False (usually worse, but for large
+                dimensions might help)
             - `gp_meanf`: mean function for GPR, constant by default
             - `gp_mu`: initial value for constant mean function in GPR
             - `gp_length`: initial value for lengthscales in the kernel
@@ -89,13 +93,17 @@ class GPSOptimiser:
         self.n_workers = n_workers
 
         # GPR model hyperparameters
+        multiplier = (
+            self.param_space.ndim if kwargs.pop("gp_kernel_ARD", False) else 1
+        )
+        lengthscales_prior = multiplier * [
+            kwargs.pop("gp_length", np.sum(NORM_PARAMS_BOUNDS) * 0.25)
+        ]
         self.gp_surr = GPSurrogate(
             gp_kernel=kwargs.pop(
                 "gp_kernel",
                 gpflow.kernels.Matern52(
-                    lengthscale=kwargs.pop(
-                        "gp_length", np.sum(NORM_PARAMS_BOUNDS) * 0.25
-                    ),
+                    lengthscale=lengthscales_prior,
                     variance=kwargs.pop("gp_var", 1.0),
                 ),
             ),
@@ -367,12 +375,9 @@ class GPSOptimiser:
 
         # update evaluation counter (not by repeats!)
         self.n_eval_counter += orig_coords.shape[0]
-        # return mean over repeats
-        return (
-            np.array(scores)
-            .astype(np.float)
-            .reshape((self.eval_repeats, -1))
-            .mean(axis=0)
+        # return aggregation over repeats
+        return self.eval_repeats_function(
+            np.array(scores).astype(np.float).reshape((self.eval_repeats, -1))
         )
 
     def _stopping_condition(self, iteration):
@@ -392,7 +397,12 @@ class GPSOptimiser:
             return self.param_space.max_depth <= self.budget
 
     def run(
-        self, objective_function, init_samples=None, eval_repeats=1, **kwargs
+        self,
+        objective_function,
+        init_samples=None,
+        eval_repeats=1,
+        eval_repeats_function=np.mean,
+        **kwargs,
     ):
         """
         Run the optimisation.
@@ -412,6 +422,11 @@ class GPSOptimiser:
             necessary; repeats are not counted towards the budget of objective
             evaluations; multiprocessing is used when self.n_workers > 1
         :type eval_repeats: int
+        :param eval_repeats_function: function for aggregating multiple
+            evaluations (see `eval_repeats`), has to take axis as an argument,
+            good choices are mean, median or max; their nan- version can be
+            used as well, when the stochastic evaluation might expectedly fail
+        :type eval_repeats_function: callable
         :kwargs:
             - "seed": seed for uniform sampler when sampling strategy is used
         :return: point with highest score of objective function
@@ -420,6 +435,8 @@ class GPSOptimiser:
         assert callable(objective_function)
         self.obj_func = objective_function
         self.eval_repeats = eval_repeats
+        assert callable(eval_repeats_function)
+        self.eval_repeats_function = partial(eval_repeats_function, axis=0)
         logging.info(
             f"Starting {self.param_space.ndim}-dimensional optimisation with "
             f"budget of {self.budget} objective function evaluations..."
