@@ -243,13 +243,19 @@ class GPSurrogate:
     def _gp_train(self, x, y):
         assert x.shape[0] == y.shape[0]
         assert x.ndim == 2 and y.ndim == 2
-        # init model
-        self.gpr_model = gpflow.models.GPR(
-            data=(x, y),
-            kernel=self.gp_kernel,
-            mean_function=self.gp_meanf,
-            noise_variance=self.gp_lik_sigma,
-        )
+
+        if self.gpr_model is None:
+            # if None, init model
+            self.gpr_model = gpflow.models.GPR(
+                data=(x, y),
+                kernel=self.gp_kernel,
+                mean_function=self.gp_meanf,
+                noise_variance=self.gp_lik_sigma,
+            )
+        else:
+            # just assign new data
+            self.gpr_model.data = (x, y)
+
         optimizer = gpflow.optimizers.Scipy()
 
         def objective_closure():
