@@ -289,9 +289,9 @@ class LeafNode(NodeMixin):
             )
         ]
         # middle leaf has the same center
-        assert children_leaves[1].get_center_as_list(
-            normed=True
-        ) == self.get_center_as_list(normed=True)
+        middle_center = children_leaves[1].get_center_as_list(normed=True)
+        parent_center = self.get_center_as_list(normed=True)
+        np.testing.assert_allclose(middle_center, parent_center)
 
         return children_leaves
 
