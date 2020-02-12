@@ -10,6 +10,7 @@ from anytree import PreOrderIter
 from pathos.pools import ProcessPool
 from scipy.special import erfcinv
 
+from .callbacks import CallbackTypes, GPSOCallback
 from .gp_surrogate import GPPoint, GPSurrogate, PointLabels
 from .param_space import NORM_PARAMS_BOUNDS, ParameterSpace
 
@@ -30,6 +31,7 @@ class GPSOptimiser:
         varsigma=erfcinv(0.01),
         gp_lik_sigma=1.0e-3,
         n_workers=1,
+        callbacks=None,
         **kwargs,
     ):
         """
@@ -62,6 +64,8 @@ class GPSOptimiser:
         :type gp_lik_sigma: float
         :param n_workers: number of workers to use where applicable
         :type n_workers: int
+        :param callbacks: list of (initialised) user-defined callbacks
+        :type callbacks: list[GPSOCallback|None]
         :**kwargs: keyword arguments
             - `gp_kernel`: covariance kernel for GPR, Matern52 by default
             - `gp_kernel_ARD`: whether to use ARD for lengthscales in the GPR
@@ -92,6 +96,11 @@ class GPSOptimiser:
         self.n_eval_counter = 0
         self.n_workers = n_workers
 
+        if callbacks is None:
+            callbacks = []
+        assert all(isinstance(callback, GPSOCallback) for callback in callbacks)
+        self.callbacks = callbacks
+
         # GPR model hyperparameters
         multiplier = (
             self.param_space.ndim if kwargs.pop("gp_kernel_ARD", False) else 1
@@ -114,6 +123,15 @@ class GPSOptimiser:
             gauss_likelihood_sigma=gp_lik_sigma,
             varsigma=varsigma,
         )
+
+    def _run_callbacks(self, callback_type):
+        """
+        Run callbacks of given type.
+        """
+        assert callback_type in CallbackTypes
+        for callback in self.callbacks:
+            if callback.callback_type == callback_type:
+                callback.run(self)
 
     def _initialise(self, init_samples):
         """
@@ -216,6 +234,8 @@ class GPSOptimiser:
                 assert leaf_point is not None
                 if leaf_point.label == PointLabels.gp_based:
                     leaf.score = leaf_point.score_ucb
+
+            self._run_callbacks(callback_type=CallbackTypes.post_update)
         return self.gp_surr.num_evaluated
 
     def _tree_explore(self, levels_to_explore, **kwargs):
@@ -442,6 +462,8 @@ class GPSOptimiser:
             f"budget of {self.budget} objective function evaluations..."
         )
         self._initialise(init_samples)
+        self._run_callbacks(callback_type=CallbackTypes.post_initialise)
+
         update_idx = self._gp_update(0)
         # keep notes on whether we should explore specific level
         explore_levels = [True]
@@ -451,6 +473,8 @@ class GPSOptimiser:
         cond = True
         iterations = 0
         while cond:
+            self._run_callbacks(callback_type=CallbackTypes.pre_iteration)
+
             # explore
             self._tree_explore(
                 levels_to_explore=explore_levels, seed=kwargs.pop("seed", None)
@@ -473,6 +497,8 @@ class GPSOptimiser:
                 f" GP-based estimates: {self.gp_surr.num_gp_based} \n\t"
                 f" depth of the tree: {self.param_space.max_depth}"
             )
+            self._run_callbacks(callback_type=CallbackTypes.post_iteration)
+
             # reevaluate condition based on the condition itself and its budget
             cond = self._stopping_condition(iterations)
 
@@ -480,5 +506,6 @@ class GPSOptimiser:
             "Done. Highest evaluated score: "
             f"{self.gp_surr.highest_score.score_mu}"
         )
+        self._run_callbacks(callback_type=CallbackTypes.pre_finalise)
 
         return self.gp_surr.highest_score
