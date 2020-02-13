@@ -40,6 +40,7 @@ class TestCallbacks(unittest.TestCase):
                 TEMP_FOLDER, "post_iteration_callback"
             ),
             marginal_percentile=0.1,
+            from_iteration=3,
         ),
         PostUpdateLogging(),
     ]
@@ -107,11 +108,13 @@ class TestCallbacks(unittest.TestCase):
         os.remove(log)
         # now test plots after each iteration
         n_iterations = self.opt_done.callbacks[0].iterations_counter
+        from_iter = self.opt_done.callbacks[0].from_iteration
+        extension = self.opt_done.callbacks[0].plot_ext
         all_files = os.listdir(TEMP_FOLDER)
         # assert number of plots
-        self.assertEqual(len(all_files), n_iterations * 3)
+        self.assertEqual(len(all_files), (n_iterations - from_iter) * 3)
         # assert all are png
-        self.assertTrue(all(fname.endswith(".png") for fname in all_files))
+        self.assertTrue(all(fname.endswith(extension) for fname in all_files))
 
 
 if __name__ == "__main__":
