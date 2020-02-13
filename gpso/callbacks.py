@@ -1,40 +1,77 @@
 """
-User defined callbacks.
+Set of useful callbacks.
 """
-
 import logging
-from enum import Enum, auto, unique
+
+from gpflow.utilities import tabulate_module_summary
+
+from .optimisation import CallbackTypes, GPSOCallback
+from .plotting import (
+    plot_conditional_surrogate_distributions,
+    plot_parameter_marginal_distributions,
+    plot_ternary_tree,
+)
 
 
-@unique
-class CallbackTypes(Enum):
+class PostIterationPlotting(GPSOCallback):
     """
-    Define callback types.
+    Callback for plotting conditional surrogate distributions, marginal
+    distributions of parameters and ternary tree after each iteration.
     """
 
-    post_initialise = auto()
-    pre_iteration = auto()
-    post_iteration = auto()
-    post_update = auto()
-    pre_finalise = auto()
+    callback_type = CallbackTypes.post_iteration
 
-
-class GPSOCallback:
-    # do not forget to define type of the callback
-    callback_type = None
-
-    def __init__(self):
-        # all arguments for callback needs to be defined here
-
-        # when subclassing, it is recommended to call super().__init__() for
-        # sanity check
-        assert (
-            self.callback_type in CallbackTypes
-        ), "Callback type must be one of `CallbackTypes`"
+    def __init__(
+        self,
+        filename_pattern,
+        gp_mean_limits=[-10, 10],
+        gp_var_limits=[0, 5],
+        marginal_plot_type="kde",
+        marginal_percentile=0.9,
+    ):
+        super().__init__()
+        self.filename_pattern = filename_pattern
+        self.gp_mean_limits = gp_mean_limits
+        self.gp_var_limits = gp_var_limits
+        self.marginal_plot_type = marginal_plot_type
+        self.marginal_percentile = marginal_percentile
+        self.iterations_counter = 0
 
     def run(self, optimiser):
-        # run only takes one argument - the GPSOptimiser itself
+        super().run(optimiser)
+        filename_pat_w_it = (
+            self.filename_pattern + f"_iter{self.iterations_counter}"
+        )
+        plot_conditional_surrogate_distributions(
+            optimiser,
+            mean_limits=self.gp_mean_limits,
+            var_limits=self.gp_var_limits,
+            fname=filename_pat_w_it + "_surrogate_dist.png",
+        )
+        plot_parameter_marginal_distributions(
+            optimiser,
+            plot_type=self.marginal_plot_type,
+            percentile=self.marginal_percentile,
+            fname=filename_pat_w_it + "_param_marginals.png",
+        )
+        plot_ternary_tree(
+            optimiser.param_space,
+            cmap_limits=self.gp_mean_limits,
+            fname=filename_pat_w_it + "_tree.png",
+        )
+        self.iterations_counter += 1
 
-        # when subclassing, it is recommended to call super().run() for sanity
-        # check
-        logging.info(f"Running {self.__class__.__name__} callback...")
+
+class PostUpdateLogging(GPSOCallback):
+    """
+    Callback for logging GPR summary after its update.
+    """
+
+    callback_type = CallbackTypes.post_update
+
+    def run(self, optimiser):
+        super().run(optimiser)
+        logging.info(
+            "GPR summary:\n"
+            + tabulate_module_summary(optimiser.gp_surr.gpr_model)
+        )
