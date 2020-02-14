@@ -8,10 +8,14 @@ from shutil import rmtree
 
 import numpy as np
 import pytest
-from gpso.callbacks import PostIterationPlotting, PostUpdateLogging
+from gpso.callbacks import (
+    PostIterationPlotting,
+    PostUpdateLogging,
+    PreFinaliseSave,
+)
 from gpso.optimisation import CallbackTypes, GPSOCallback, GPSOptimiser
 from gpso.param_space import ParameterSpace
-from gpso.utils import set_logger
+from gpso.utils import JSON_EXT, LOG_EXT, PKL_EXT, set_logger
 
 TEMP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 
@@ -43,8 +47,11 @@ class TestCallbacks(unittest.TestCase):
             from_iteration=3,
         ),
         PostUpdateLogging(),
+        PreFinaliseSave(path=TEMP_FOLDER),
     ]
-    LOG_FILENAME = "log.log"
+    LOG_FILENAME = f"log{LOG_EXT}"
+    PARAM_SPACE_FILENAME = f"parameter_space{PKL_EXT}"
+    LIST_OF_POINTS_FILRNAME = f"list_of_points{JSON_EXT}"
 
     @staticmethod
     def _obj_func(point):
@@ -106,6 +113,14 @@ class TestCallbacks(unittest.TestCase):
         self.assertTrue(os.path.exists(log))
         # remove log file
         os.remove(log)
+
+        # now test pre-finalise saving
+        param_space = os.path.join(TEMP_FOLDER, self.PARAM_SPACE_FILENAME)
+        self.assertTrue(os.path.exists(param_space))
+        os.remove(param_space)
+        list_of_points = os.path.join(TEMP_FOLDER, self.LIST_OF_POINTS_FILRNAME)
+        self.assertTrue(os.path.exists(list_of_points))
+        os.remove(list_of_points)
         # now test plots after each iteration
         n_iterations = self.opt_done.callbacks[0].iterations_counter
         from_iter = self.opt_done.callbacks[0].from_iteration

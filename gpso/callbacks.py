@@ -2,6 +2,7 @@
 Set of useful callbacks.
 """
 import logging
+import os
 
 from gpflow.utilities import tabulate_module_summary
 
@@ -11,6 +12,7 @@ from .plotting import (
     plot_parameter_marginal_distributions,
     plot_ternary_tree,
 )
+from .utils import JSON_EXT, PKL_EXT
 
 
 class PostIterationPlotting(GPSOCallback):
@@ -100,4 +102,25 @@ class PostUpdateLogging(GPSOCallback):
         logging.info(
             "GPR summary:\n"
             + tabulate_module_summary(optimiser.gp_surr.gpr_model)
+        )
+
+
+class PreFinaliseSave(GPSOCallback):
+    """
+    Callback for saving before finalisation.
+    """
+
+    callback_type = CallbackTypes.pre_finalise
+
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+
+    def run(self, optimiser):
+        super().run(optimiser)
+        optimiser.param_space.save(
+            os.path.join(self.path, f"parameter_space{PKL_EXT}")
+        )
+        optimiser.gp_surr.points.save(
+            os.path.join(self.path, f"list_of_points{JSON_EXT}")
         )
