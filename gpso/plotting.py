@@ -13,6 +13,9 @@ from .gp_surrogate import PointLabels
 from .optimisation import GPSOptimiser
 from .param_space import ParameterSpace
 
+# for reasonable quality plots...
+DPI = 300
+
 # default number of bins for histogram like plots, and squared as default number
 # for linspaces when creating data for surrogate plots
 N_BINS = 10
@@ -129,7 +132,7 @@ def plot_ternary_tree(
     cb_mean.set_label("Score / evaluated or UCB")
 
     if fname is not None:
-        plt.savefig(fname)
+        plt.savefig(fname, bbox_inches="tight", dpi=DPI)
     else:
         plt.show()
     plt.close()
@@ -204,7 +207,7 @@ def plot_parameter_marginal_distributions(
         plt.title(gpso_optimiser.param_space.parameter_names[param_idx])
 
     if fname is not None:
-        plt.savefig(fname)
+        plt.savefig(fname, bbox_inches="tight", dpi=DPI)
     else:
         plt.show()
     plt.close()
@@ -476,7 +479,7 @@ def plot_conditional_surrogate_distributions(
     cb_var.set_label("GP surrogate uncertainty")
 
     if fname is not None:
-        plt.savefig(fname)
+        plt.savefig(fname, bbox_inches="tight", dpi=DPI)
     else:
         plt.show()
     plt.close()
