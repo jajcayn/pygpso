@@ -36,6 +36,17 @@ class LeafNode(NodeMixin):
         "label",
     ]
 
+    INIT_ATTRS = [
+        "label",
+        "name",
+        "norm_bounds",
+        "parameter_names",
+        "sampled",
+        "scaler",
+        "score",
+        "children",
+    ]
+
     @staticmethod
     def _validate_single_bound(single_bound):
         """
@@ -313,9 +324,32 @@ class ParameterSpace(LeafNode):
         with open(filename, "rb") as f:
             loaded_dict = pickle.load(f)
 
+        def _sanitize_dict(raw_dict, keys_to_delete):
+            """
+            Remove keys from dict - possibly nested.
+            """
+            sanit_dict = {}
+            for key, value in raw_dict.items():
+                if key not in keys_to_delete:
+                    if isinstance(value, (list, tuple)):
+                        sanit_dict[key] = [
+                            _sanitize_dict(list_val, keys_to_delete)
+                            if isinstance(list_val, dict)
+                            else list_val
+                            for list_val in value
+                        ]
+                    elif isinstance(value, dict):
+                        sanit_dict[key] = _sanitize_dict(value, keys_to_delete)
+                    else:
+                        sanit_dict[key] = value
+            return sanit_dict
+
+        # sanitise dict for correct init
+        keys_to_delete = set(loaded_dict.keys()) - set(cls.INIT_ATTRS)
+        sanitised_dict = _sanitize_dict(loaded_dict, keys_to_delete)
         # import as `LeafNode` class
         importer = DictImporter(nodecls=LeafNode)
-        root_leaf_node = importer.import_(loaded_dict)
+        root_leaf_node = importer.import_(sanitised_dict)
         # force `ParameterSpace` class which extends `LeafNode` with some
         # useful methods
         root_leaf_node.__class__ = ParameterSpace
