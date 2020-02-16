@@ -208,7 +208,7 @@ class GPSOptimiser:
                     f"Only {init_samples.shape[0]} points selected for "
                     "sampling, you might want to add more..."
                 )
-            elif init_samples.shape[0] > 10:
+            elif init_samples.shape[0] > (2 * self.param_space.ndim):
                 logging.warning(
                     "Too many initial points obtained, you will run out of "
                     "budget of objective function evaluations!"
