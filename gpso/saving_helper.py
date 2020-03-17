@@ -129,3 +129,80 @@ class TableSaver:
             if isinstance(rval, str):
                 rval = rval.encode()
             self.file.create_array(group, rkey, rval)
+
+
+def table_reader(filename):
+    """
+    Read saved table from the optimisation and return results, scores and
+    parameters of individual runs.
+
+    :param filename: filename of the HDF file
+    :type filename: str
+    :return: results, scores, parameters and extras if present; if mutliple
+        runs per parameter set, that item is a list itself
+    :rtype: (list,list,list,dict|None)
+    """
+    if not filename.endswith(H5_EXT):
+        filename += H5_EXT
+    logging.info(f"Loading {filename}...")
+    loaded = open_file(filename, mode="r")
+
+    def _read_params(group):
+        parameters = {}
+        for key in loaded.walk_nodes(group["params"], "Array"):
+            parameters[key.name] = key.read()
+        return parameters
+
+    def _read_result(group):
+        score = group["score"].read()
+        if "result" in group:
+            result = group["result"].read()
+        elif "pd_data" in group:
+            result = pd.DataFrame(
+                group["pd_data"].read(),
+                columns=[c.decode() for c in group["pd_columns"].read()],
+                index=group["pd_index"].read(),
+            )
+        return result, score
+
+    assert ALL_RUNS_KEY in loaded.root
+    # get list of all groups with runs
+    results_groups = loaded.list_nodes(f"/{ALL_RUNS_KEY}")
+    all_results = []
+    all_scores = []
+    all_parameters = []
+    for group in results_groups:
+        all_parameters.append(_read_params(group))
+        # if we have more results per run
+        ind_results_groups = list(loaded.walk_groups(group["result"]))
+        if len(ind_results_groups) >= 2:
+            results_run = []
+            scores_run = []
+            for individual_group in ind_results_groups[1:]:
+                result, score = _read_result(individual_group)
+                results_run.append(result)
+                scores_run.append(score)
+            all_results.append(results_run)
+            all_scores.append(scores_run)
+        else:
+            result, score = _read_result(group["result"])
+            all_results.append(result)
+            all_scores.append(score)
+
+    assert len(all_parameters) == len(results_groups)
+    assert len(all_results) == len(results_groups)
+    assert len(all_scores) == len(results_groups)
+
+    # try to read extras
+    if EXTRAS_KEY in loaded.root:
+        extras = {}
+        for key in loaded.walk_nodes(f"/{EXTRAS_KEY}", "Array"):
+            value = key.read()
+            extras[key.name] = (
+                value.decode() if isinstance(value, bytes) else value
+            )
+    else:
+        extras = None
+    loaded.close()
+
+    return all_results, all_scores, all_parameters, extras
