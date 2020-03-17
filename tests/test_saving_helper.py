@@ -7,7 +7,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
-from gpso.saving_helper import TableSaver
+from gpso.saving_helper import ALL_RUNS_KEY, EXTRAS_KEY, RUN_PREFIX, TableSaver
 from gpso.utils import H5_EXT
 from tables import open_file
 
@@ -35,7 +35,7 @@ class TestTableSaver(unittest.TestCase):
         # test saved extras
         saved = open_file(self.FILENAME + H5_EXT)
         for key, value in self.EXTRAS.items():
-            saved_val = saved.root.extras[key].read()
+            saved_val = saved.root[EXTRAS_KEY][key].read()
             if isinstance(saved_val, bytes):
                 saved_val = saved_val.decode()
             if isinstance(saved_val, np.ndarray):
@@ -50,18 +50,30 @@ class TestTableSaver(unittest.TestCase):
         np.random.seed(42)
         ARRAY = np.random.rand(12, 3)
         PARAMS = {"a": 1.0, "b": 0.1}
+        SCORE = 0.8
         saver = TableSaver(filename=self.FILENAME)
-        saver.save_runs(ARRAY, PARAMS)
+        saver.save_runs(ARRAY, SCORE, PARAMS)
         saver.close()
         # test saved run
         saved = open_file(self.FILENAME + H5_EXT)
         # check parameters
         for key, value in PARAMS.items():
-            saved_val = saved.root.runs["run_0"]["params"][key].read()
+            saved_val = saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["params"][
+                key
+            ].read()
             self.assertEqual(saved_val, value)
         # check result itself
         np.testing.assert_equal(
-            ARRAY, saved.root.runs["run_0"]["result"]["result"].read()
+            ARRAY,
+            saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["result"][
+                "result"
+            ].read(),
+        )
+        self.assertEqual(
+            SCORE,
+            saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["result"][
+                "score"
+            ].read(),
         )
         # proper exit
         saved.close()
@@ -77,18 +89,23 @@ class TestTableSaver(unittest.TestCase):
             ),
         ]
         PARAMS = {"a": 1.0, "b": 0.1}
+        SCORES = [0.7, 0.1]
         saver = TableSaver(filename=self.FILENAME)
-        saver.save_runs(DFS, PARAMS)
+        saver.save_runs(DFS, SCORES, PARAMS)
         saver.close()
         # test saved run
         saved = open_file(self.FILENAME + H5_EXT)
         # check parameters
         for key, value in PARAMS.items():
-            saved_val = saved.root.runs["run_0"]["params"][key].read()
+            saved_val = saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["params"][
+                key
+            ].read()
             self.assertEqual(saved_val, value)
         # check results
         for idx, df in enumerate(DFS):
-            group = saved.root.runs["run_0"]["result"][f"result_{idx}"]
+            group = saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["result"][
+                f"result_{idx}"
+            ]
             # recreate dataframe
             df_saved = pd.DataFrame(
                 group["pd_data"].read(),
@@ -96,6 +113,7 @@ class TestTableSaver(unittest.TestCase):
                 index=group["pd_index"].read(),
             )
             pd.testing.assert_frame_equal(df, df_saved)
+            self.assertEqual(SCORES[idx], group["score"].read())
         # proper exit
         saved.close()
         os.remove(self.FILENAME + H5_EXT)

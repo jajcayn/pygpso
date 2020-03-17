@@ -9,6 +9,11 @@ from tables import open_file
 
 from .utils import H5_EXT
 
+# keys in HDF file hierarchy
+ALL_RUNS_KEY = "runs"
+EXTRAS_KEY = "extras"
+RUN_PREFIX = "run_"
+
 
 class TableSaver:
     """
@@ -31,18 +36,18 @@ class TableSaver:
         self.filename = filename
         # default group
         self.group = self.file.create_group(
-            "/", "runs", "Individual exploration runs"
+            "/", ALL_RUNS_KEY, "Individual exploration runs"
         )
         if extras is not None:
             extra_group = self.file.create_group(
-                "/", "extras", "Extra parameters of the model"
+                "/", EXTRAS_KEY, "Extra parameters of the model"
             )
             assert isinstance(extras, dict)
             self._write_dict(extra_group, extras)
 
         self.results_counter = 0
 
-    def save_runs(self, result, parameters):
+    def save_runs(self, result, score, parameters):
         """
         Save runs of the model / objective function to file.
 
@@ -50,12 +55,14 @@ class TableSaver:
             results (same parameters, different results, typically valid for
             stochastic systems)
         :type result: any pytables supported + pd.DataFrame|list of thereof
+        :param score: score(s) of the run
+        :type score: float|list[float]
         :param parameters: parameters for this particular run(s)
         :type parameters: dict
         """
         run_group = self.file.create_group(
             self.group,
-            f"run_{self.results_counter}",
+            f"{RUN_PREFIX}{self.results_counter}",
             f"Results for run no. {self.results_counter}",
         )
         params_group = self.file.create_group(
@@ -67,13 +74,15 @@ class TableSaver:
         )
         # we have multiple runs with the same parameters
         if isinstance(result, (list, tuple)):
+            assert isinstance(score, (list, tuple))
+            assert len(score) == len(result)
             for idx, ind_result in enumerate(result):
                 ind_group = self.file.create_group(
                     result_group, f"result_{idx}", f"Result for the run {idx}"
                 )
-                self._write_result(ind_group, ind_result)
+                self._write_result(ind_group, ind_result, score[idx])
         else:
-            self._write_result(result_group, result)
+            self._write_result(result_group, result, score)
 
         self.file.flush()
         self.results_counter += 1
@@ -84,7 +93,7 @@ class TableSaver:
         """
         self.file.close()
 
-    def _write_result(self, group, result):
+    def _write_result(self, group, result, score):
         """
         Write single result to given group.
 
@@ -92,6 +101,8 @@ class TableSaver:
         :type group: `tables.group.Group`
         :param result: result to write
         :type result: any pytables supported + pd.DataFrame
+        :param score: score to write
+        :type score: float
         """
         if isinstance(result, pd.DataFrame):
             result_dict = {
@@ -102,6 +113,7 @@ class TableSaver:
             self._write_dict(group, result_dict)
         else:
             self.file.create_array(group, "result", result)
+        self.file.create_array(group, "score", score)
 
     def _write_dict(self, group, dict_data):
         """
