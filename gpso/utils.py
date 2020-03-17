@@ -5,10 +5,11 @@ Useful utilities.
 import json
 import logging
 
-JSON_EXT = ".json"
-PKL_EXT = ".pkl"
 LOG_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_EXT = ".log"
+JSON_EXT = ".json"
+PKL_EXT = ".pkl"
+H5_EXT = ".h5"
 
 
 def load_json(filename):
