@@ -9,6 +9,7 @@ from shutil import rmtree
 import numpy as np
 import pytest
 from gpso.callbacks import (
+    GPFlowCheckpoints,
     PostIterationPlotting,
     PostUpdateLogging,
     PreFinaliseSave,
@@ -44,10 +45,11 @@ class TestCallbacks(unittest.TestCase):
                 TEMP_FOLDER, "post_iteration_callback"
             ),
             marginal_percentile=0.1,
-            from_iteration=3,
+            from_iteration=12,
         ),
         PostUpdateLogging(),
         PreFinaliseSave(path=TEMP_FOLDER),
+        GPFlowCheckpoints(path=os.path.join(TEMP_FOLDER, "checkpoints")),
     ]
     LOG_FILENAME = f"log{LOG_EXT}"
     PARAM_SPACE_FILENAME = f"parameter_space{PKL_EXT}"
@@ -78,6 +80,7 @@ class TestCallbacks(unittest.TestCase):
         """
         # make directory
         os.makedirs(TEMP_FOLDER)
+        os.makedirs(os.path.join(TEMP_FOLDER, "checkpoints"))
         X_BOUNDS = [-3, 5]
         Y_BOUNDS = [-3, 3]
         set_logger(log_filename=os.path.join(TEMP_FOLDER, cls.LOG_FILENAME))
@@ -121,6 +124,20 @@ class TestCallbacks(unittest.TestCase):
         list_of_points = os.path.join(TEMP_FOLDER, self.LIST_OF_POINTS_FILRNAME)
         self.assertTrue(os.path.exists(list_of_points))
         os.remove(list_of_points)
+
+        # test checkpoints
+        self.assertTrue(
+            os.path.exists(os.path.join(TEMP_FOLDER, "checkpoints"))
+        )
+        num_checkpoints = len(
+            os.listdir(os.path.join(TEMP_FOLDER, "checkpoints"))
+        )
+        # assert number of files - should 2x number of checkpoints + 1
+        self.assertEqual(
+            num_checkpoints, 2 * self.opt_done.callbacks[3].max_to_keep + 1
+        )
+        rmtree(os.path.join(TEMP_FOLDER, "checkpoints"))
+
         # now test plots after each iteration
         n_iterations = self.opt_done.callbacks[0].iterations_counter
         from_iter = self.opt_done.callbacks[0].from_iteration
