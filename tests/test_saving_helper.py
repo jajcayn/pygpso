@@ -6,7 +6,10 @@ import os
 import unittest
 
 import numpy as np
-import pandas as pd
+import pytest
+
+pd = pytest.importorskip("pandas")
+tables = pytest.importorskip("tables")
 from gpso.saving_helper import (
     ALL_RUNS_KEY,
     EXTRAS_KEY,
@@ -15,7 +18,6 @@ from gpso.saving_helper import (
     table_reader,
 )
 from gpso.utils import H5_EXT
-from tables import open_file
 
 
 class TestTableSaver(unittest.TestCase):
@@ -39,7 +41,7 @@ class TestTableSaver(unittest.TestCase):
         saver = TableSaver(filename=self.FILENAME, extras=self.EXTRAS)
         saver.close()
         # test saved extras
-        saved = open_file(self.FILENAME + H5_EXT)
+        saved = tables.open_file(self.FILENAME + H5_EXT)
         for key, value in self.EXTRAS.items():
             saved_val = saved.root[EXTRAS_KEY][key].read()
             if isinstance(saved_val, bytes):
@@ -61,7 +63,7 @@ class TestTableSaver(unittest.TestCase):
         saver.save_runs(ARRAY, SCORE, PARAMS)
         saver.close()
         # test saved run
-        saved = open_file(self.FILENAME + H5_EXT)
+        saved = tables.open_file(self.FILENAME + H5_EXT)
         # check parameters
         for key, value in PARAMS.items():
             saved_val = saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["params"][
@@ -100,7 +102,7 @@ class TestTableSaver(unittest.TestCase):
         saver.save_runs(DFS, SCORES, PARAMS)
         saver.close()
         # test saved run
-        saved = open_file(self.FILENAME + H5_EXT)
+        saved = tables.open_file(self.FILENAME + H5_EXT)
         # check parameters
         for key, value in PARAMS.items():
             saved_val = saved.root[ALL_RUNS_KEY][f"{RUN_PREFIX}0"]["params"][
