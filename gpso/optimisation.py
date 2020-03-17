@@ -147,7 +147,7 @@ class GPSOptimiser:
             gp_kernel=kwargs.pop(
                 "gp_kernel",
                 gpflow.kernels.Matern52(
-                    lengthscale=lengthscales_prior,
+                    lengthscales=lengthscales_prior,
                     variance=kwargs.pop("gp_var", 1.0),
                 ),
             ),
