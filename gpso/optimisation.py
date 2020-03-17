@@ -67,6 +67,7 @@ class GPSOptimiser:
         gp_lik_sigma=1.0e-3,
         n_workers=1,
         callbacks=None,
+        saver=None,
         **kwargs,
     ):
         """
@@ -101,6 +102,12 @@ class GPSOptimiser:
         :type n_workers: int
         :param callbacks: list of (initialised) user-defined callbacks
         :type callbacks: list[GPSOCallback|None]
+        :param saver: saver object, which is able to save intermediate results
+            (e.g. timeseries from objective function), if passed, it has to
+            implement `save_runs` method - ideal candidate is `TableSaver`
+            which is part of `gpso` and saves results to HDF file, if saver is
+            passed, the objective function has to return (result, score)
+        :type saver: object|None
         :**kwargs: keyword arguments
             - `gp_kernel`: covariance kernel for GPR, Matern52 by default
             - `gp_kernel_ARD`: whether to use ARD for lengthscales in the GPR
@@ -158,6 +165,13 @@ class GPSOptimiser:
             gauss_likelihood_sigma=gp_lik_sigma,
             varsigma=varsigma,
         )
+
+        # saver
+        self.saver = saver
+        if saver is not None:
+            # saver has to implement `save_runs` function
+            save_func = getattr(self.saver, "save_runs", None)
+            assert callable(save_func)
 
     def _run_callbacks(self, callback_type):
         """
@@ -414,7 +428,7 @@ class GPSOptimiser:
             and (self.eval_repeats * orig_coords.shape[0]) > 1
         ):
             pool = ProcessPool(self.n_workers)
-            map_func = pool.imap
+            map_func = pool.map
         else:
             pool = None
             map_func = map
@@ -430,6 +444,26 @@ class GPSOptimiser:
 
         # update evaluation counter (not by repeats!)
         self.n_eval_counter += orig_coords.shape[0]
+
+        # save if needed
+        if self.saver is not None:
+            results = [score[0] for score in scores]
+            scores = [score[1] for score in scores]
+            # save each coordinate as single run
+            for coord_idx, coords in enumerate(orig_coords):
+                run_results = results[coord_idx :: orig_coords.shape[0]]
+                run_scores = scores[coord_idx :: orig_coords.shape[0]]
+                assert len(run_results) == len(run_scores) == self.eval_repeats
+                self.saver.save_runs(
+                    run_results,
+                    run_scores,
+                    {
+                        param_name: coord
+                        for param_name, coord in zip(
+                            self.param_space.parameter_names, coords
+                        )
+                    },
+                )
         # return aggregation over repeats
         return self.eval_repeats_function(
             np.array(scores).astype(np.float).reshape((self.eval_repeats, -1))
