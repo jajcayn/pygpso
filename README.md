@@ -38,6 +38,8 @@ When you are the type of girl or guy who likes to install packages properly, sta
 git clone https://github.com/jajcayn/pygpso
 cd pygpso/
 pip install -r requirements.txt
+# optionally
+pip install -r requirements_optional.txt
 pip install .
 ```
 Don't forget to test!
