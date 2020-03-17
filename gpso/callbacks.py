@@ -4,6 +4,7 @@ Set of useful callbacks.
 import logging
 import os
 
+import tensorflow as tf
 from gpflow.utilities import tabulate_module_summary
 
 from .optimisation import CallbackTypes, GPSOCallback
@@ -124,3 +125,34 @@ class PreFinaliseSave(GPSOCallback):
         optimiser.gp_surr.points.save(
             os.path.join(self.path, f"list_of_points{JSON_EXT}")
         )
+
+
+class GPFlowCheckpoints(GPSOCallback):
+    """
+    Callback for creating checkpoints while training GP.
+    """
+
+    callback_type = CallbackTypes.post_update
+
+    def __init__(self, path, max_to_keep=10):
+        super().__init__()
+        self.path = path
+        self.first_update = True
+        self.max_to_keep = max_to_keep
+        self.n_evals = tf.Variable(0)
+
+    def run(self, optimiser):
+        super().run(optimiser)
+        self.n_evals.assign(optimiser.n_eval_counter)
+        if self.first_update:
+            ckpt = tf.train.Checkpoint(
+                model=optimiser.gp_surr.gpr_model, evluations=self.n_evals,
+            )
+            self.manager = tf.train.CheckpointManager(
+                ckpt, self.path, max_to_keep=self.max_to_keep
+            )
+            saved_to = self.manager.save()
+            self.first_update = False
+        else:
+            saved_to = self.manager.save()
+        logging.debug(f"Checkppoint saved to {saved_to}")
