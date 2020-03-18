@@ -241,16 +241,35 @@ class TestGPSurrogate(unittest.TestCase):
         self._create_gpsurrogate(init_points=NUM_INIT_POINTS, seed=42)
         x_train, y_train = self.gp_surr.current_training_data
         self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
-        # currently test whether it correctly raises exception
-        with pytest.raises(NotImplementedError):
-            # save class (model and list of points)
-            self.gp_surr.save(self.TEMP_FOLDER)
-            # TODO finish once saving/loading is ok
-            rmtree(self.TEMP_FOLDER)
+        # save class (model and list of points)
+        self.gp_surr.save(self.TEMP_FOLDER)
 
-        with pytest.raises(NotImplementedError):
-            # save class (model and list of points)
-            GPSurrogate.from_saved(self.TEMP_FOLDER)
+        # load class
+        loaded = GPSurrogate.from_saved(self.TEMP_FOLDER)
+        self.assertTrue(isinstance(loaded, GPSurrogate))
+        # assert GPR parameters
+        self.assertDictEqual(
+            gpflow.utilities.parameter_dict(self.gp_surr.gpr_model),
+            gpflow.utilities.parameter_dict(loaded.gpr_model),
+        )
+        # do test prediction with GPR model
+        test_points = [
+            point
+            for point in self.gp_surr.points
+            if point.label == PointLabels.evaluated
+        ]
+        x = np.array([point.normed_coord for point in test_points])
+        mean_orig, var_orig = self.gp_surr.gpr_model.predict_y(x)
+        mean_loaded, var_loaded = loaded.gpr_model.predict_y(x)
+        np.testing.assert_equal(mean_orig.numpy(), mean_loaded.numpy())
+        np.testing.assert_equal(var_orig.numpy(), var_loaded.numpy())
+        # assert varsigma, likelihood and points
+        self.assertEqual(self.gp_surr.gp_varsigma, loaded.gp_varsigma)
+        self.assertEqual(self.gp_surr.gp_lik_sigma, loaded.gp_lik_sigma)
+        self.assertListEqual(self.gp_surr.points, loaded.points)
+
+        # remove test dir
+        rmtree(self.TEMP_FOLDER)
 
 
 if __name__ == "__main__":
