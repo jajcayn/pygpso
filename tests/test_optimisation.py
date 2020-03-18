@@ -22,7 +22,7 @@ class TestGPSOptimiser(unittest.TestCase):
     # very slightly different scores and coordinates
     BEST_COORDS_v1 = np.array([0.23525377, 0.68518519])
     BEST_SCORE_v1 = 8.10560594
-    BEST_SCORE_v2 = 7.5
+    BEST_SCORE_v2 = 6.5
 
     @staticmethod
     def _obj_func(point):
