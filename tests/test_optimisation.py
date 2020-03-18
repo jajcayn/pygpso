@@ -4,12 +4,15 @@ Test for the full optimisation run.
 
 import os
 import unittest
+from shutil import rmtree
 
 import numpy as np
 import pytest
 from gpso.gp_surrogate import GPPoint
 from gpso.optimisation import GPSOptimiser
 from gpso.param_space import ParameterSpace
+
+TEMP_FOLDER = "temp_optimisation_test"
 
 
 class TestGPSOptimiser(unittest.TestCase):
@@ -61,7 +64,6 @@ class TestGPSOptimiser(unittest.TestCase):
         dummy_ts = np.random.rand(100, 2)
         return dummy_ts, score
 
-    # WARNING: runs approx. 13 seconds
     def test_optimise_v1(self):
         """
         With tree method, for 50 evaluations, 1 worker and default init sample.
@@ -87,6 +89,70 @@ class TestGPSOptimiser(unittest.TestCase):
         self.assertEqual(
             np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v1
         )
+
+    def test_optimise_resume(self):
+        """
+        Basic optimisation with resume.
+        """
+        space = ParameterSpace(
+            parameter_names=["x", "y"],
+            parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
+        )
+        opt = GPSOptimiser(
+            parameter_space=space,
+            exploration_method="tree",
+            exploration_depth=3,
+            budget=25,
+            stopping_condition="evaluations",
+            update_cycle=1,
+            gp_lik_sigma=1.0e-3,
+            n_workers=1,
+        )
+        # optimise for 25 evaluations
+        _ = opt.run(self._obj_func)
+        # resume for additional 25 evaluations
+        best_point = opt.resume_run(additional_budget=25)
+        np.testing.assert_almost_equal(
+            self.BEST_COORDS_v1, best_point.normed_coord
+        )
+        self.assertEqual(
+            np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v1
+        )
+
+    def test_optimiser_save_resume(self):
+        """
+        Basic optimisation with saving and loading optimiser in between.
+        """
+        os.makedirs(TEMP_FOLDER)
+        space = ParameterSpace(
+            parameter_names=["x", "y"],
+            parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
+        )
+        opt = GPSOptimiser(
+            parameter_space=space,
+            exploration_method="tree",
+            exploration_depth=3,
+            budget=25,
+            stopping_condition="evaluations",
+            update_cycle=1,
+            gp_lik_sigma=1.0e-3,
+            n_workers=1,
+        )
+        # optimise for 25 evaluations
+        _ = opt.run(self._obj_func)
+        # save
+        opt.save_state(TEMP_FOLDER)
+        # resume from saved for another 25 evaluations
+        best_point = GPSOptimiser.resume_from_saved(
+            TEMP_FOLDER, additional_budget=25, objective_function=self._obj_func
+        )
+        np.testing.assert_almost_equal(
+            self.BEST_COORDS_v1, best_point.normed_coord
+        )
+        self.assertEqual(
+            np.around(best_point.score_mu, decimals=8), self.BEST_SCORE_v1
+        )
+        rmtree(TEMP_FOLDER)
 
     def test_optimise_v2(self):
         """
