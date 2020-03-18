@@ -4,12 +4,26 @@ Useful utilities.
 
 import json
 import logging
+import os
 
 LOG_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_EXT = ".log"
 JSON_EXT = ".json"
 PKL_EXT = ".pkl"
 H5_EXT = ".h5"
+
+
+def make_dirs(path):
+    """
+    Create directory.
+
+    :param path: path for new directory
+    :type path: str
+    """
+    try:
+        os.makedirs(path)
+    except OSError as error:
+        logging.warning(f"{path} could not be created: {error}")
 
 
 def load_json(filename):

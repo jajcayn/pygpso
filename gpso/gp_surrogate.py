@@ -3,13 +3,15 @@ Surrogate of the objective function using GPR.
 """
 import json
 import logging
+import os
+import pickle
 from collections import namedtuple
 from enum import Enum, unique
 
 import gpflow
 import numpy as np
 
-from .utils import JSON_EXT, load_json
+from .utils import JSON_EXT, PKL_EXT, load_json, make_dirs
 
 GP_TRAIN_MAX_ITER = 100
 DUPLICATE_TOLERANCE = 1.0e-12
@@ -129,9 +131,50 @@ class GPSurrogate:
     Class handles GP surrogate of the objective function surface.
     """
 
+    POINTS_FILE = f"points{JSON_EXT}"
+    GPR_FILE = f"GPRmodel{PKL_EXT}"
+    GPR_INFO = f"GPRinfo{JSON_EXT}"
+
     @classmethod
     def from_saved(cls, folder):
-        raise NotImplementedError("Not supported right now")
+        # load points
+        points = GPListOfPoints.from_file(os.path.join(folder, cls.POINTS_FILE))
+        # get current data as saved
+        eval_points = [
+            point for point in points if point.label == PointLabels.evaluated
+        ]
+        x = np.array([point.normed_coord for point in eval_points])
+        y = np.array([point.score_mu for point in eval_points])[:, np.newaxis]
+
+        # load GPR info
+        gpr_info = load_json(os.path.join(folder, cls.GPR_INFO))
+        # recreate kernel
+        assert hasattr(gpflow.kernels, gpr_info["gpr_kernel"])
+        gp_kernel = getattr(gpflow.kernels, gpr_info["gpr_kernel"])()
+        # recreate mean function
+        assert hasattr(gpflow.mean_functions, gpr_info["gpr_meanf"])
+        gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])()
+
+        # create placeholder model
+        gpr_model = gpflow.models.GPR(
+            data=(x, y),
+            kernel=gp_kernel,
+            mean_function=gp_meanf,
+            noise_variance=gpr_info["gp_likelihood"],
+        )
+        # load GPR parameters
+        with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
+            gpr_params = pickle.load(handle)
+        # assign hyperparameters
+        gpflow.utilities.multiple_assign(gpr_model, gpr_params)
+        return cls(
+            gp_kernel=gp_kernel,
+            gp_meanf=gp_meanf,
+            gauss_likelihood_sigma=gpr_info["gp_likelihood"],
+            varsigma=gpr_info["gp_varsigma"],
+            points=points,
+            gpr_model=gpr_model,
+        )
 
     def __init__(
         self,
@@ -355,12 +398,30 @@ class GPSurrogate:
 
     def save(self, folder):
         """
-        Save GPFlow model and list of points.
+        Save GPFlow model and list of points. This is intermediate, "hacky"
+        method until GPFlow 2.0 solves the saving problem. Currently, the GPR
+        model is saved to pickle but for its recreation one needs to initialise
+        model (with the same tree of parameters) and hyperparameters are loaded
+        from the file. The kernel and mean-function names are saved to JSON, so
+        it won't work with complex kernels and mean-functions.
+
+        :param folder: path to which save the model
+        :type folder: str
         """
-        # make_dirs(folder)
-        # # save list of points
-        # self.points.save(filename=os.path.join(folder, f"points{JSON_EXT}"))
-        # # save GPR model
-        # checkpoint = tf.train.Checkpoint(model=self.gpr_model)
-        # checkpoint.save(file_prefix=os.path.join(folder, f"ckpt{GPFLOW_EXT}"))
-        raise NotImplementedError("GPFlow cannot save models right now")
+        make_dirs(folder)
+        # save list of points
+        self.points.save(filename=os.path.join(folder, self.POINTS_FILE))
+        # hack to untie weak references
+        _ = gpflow.utilities.freeze(self.gpr_model)
+        # save GPR model to pickle - now doable
+        with open(os.path.join(folder, self.GPR_FILE), "wb") as handle:
+            pickle.dump(gpflow.utilities.parameter_dict(self.gpr_model), handle)
+        # save other info to json
+        save_info = {
+            "gpr_kernel": self.gpr_model.kernel.__class__.__name__,
+            "gpr_meanf": self.gpr_model.mean_function.__class__.__name__,
+            "gp_varsigma": self.gp_varsigma,
+            "gp_likelihood": self.gp_lik_sigma,
+        }
+        with open(os.path.join(folder, self.GPR_INFO), "w") as handle:
+            handle.write(json.dumps(save_info))

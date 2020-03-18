@@ -53,7 +53,9 @@ class TestCallbacks(unittest.TestCase):
     ]
     LOG_FILENAME = f"log{LOG_EXT}"
     PARAM_SPACE_FILENAME = f"parameter_space{PKL_EXT}"
-    LIST_OF_POINTS_FILRNAME = f"list_of_points{JSON_EXT}"
+    LIST_OF_POINTS_FILRNAME = f"points{JSON_EXT}"
+    GPR_MODEL_FILENAME = f"GPRmodel{PKL_EXT}"
+    GPR_INFO_FILENAME = f"GPRinfo{JSON_EXT}"
 
     @staticmethod
     def _obj_func(point):
@@ -110,6 +112,11 @@ class TestCallbacks(unittest.TestCase):
         """
         rmtree(TEMP_FOLDER)
 
+    def _check_file_exists_and_remove(self, filename):
+        file_ = os.path.join(TEMP_FOLDER, filename)
+        self.assertTrue(os.path.exists(file_))
+        os.remove(file_)
+
     def test_callback(self):
         # first test logging callback
         log = os.path.join(TEMP_FOLDER, self.LOG_FILENAME)
@@ -118,12 +125,10 @@ class TestCallbacks(unittest.TestCase):
         os.remove(log)
 
         # now test pre-finalise saving
-        param_space = os.path.join(TEMP_FOLDER, self.PARAM_SPACE_FILENAME)
-        self.assertTrue(os.path.exists(param_space))
-        os.remove(param_space)
-        list_of_points = os.path.join(TEMP_FOLDER, self.LIST_OF_POINTS_FILRNAME)
-        self.assertTrue(os.path.exists(list_of_points))
-        os.remove(list_of_points)
+        self._check_file_exists_and_remove(self.PARAM_SPACE_FILENAME)
+        self._check_file_exists_and_remove(self.LIST_OF_POINTS_FILRNAME)
+        self._check_file_exists_and_remove(self.GPR_MODEL_FILENAME)
+        self._check_file_exists_and_remove(self.GPR_INFO_FILENAME)
 
         # test checkpoints
         self.assertTrue(
