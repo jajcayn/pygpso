@@ -42,8 +42,6 @@ class TestUtils(unittest.TestCase):
 
         self.assertDictEqual(load_json(filename), self.TEST_DICT)
 
-    LOGGER = logging.getLogger(__name__)
-
     def test_make_dirs(self):
         # make new dir
         make_dirs(os.path.join(self.TEMP_FOLDER, "new_test_dir"))

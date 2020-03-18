@@ -122,9 +122,7 @@ class PreFinaliseSave(GPSOCallback):
         optimiser.param_space.save(
             os.path.join(self.path, f"parameter_space{PKL_EXT}")
         )
-        optimiser.gp_surr.points.save(
-            os.path.join(self.path, f"list_of_points{JSON_EXT}")
-        )
+        optimiser.gp_surr.save(self.path)
 
 
 class GPFlowCheckpoints(GPSOCallback):
