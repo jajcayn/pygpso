@@ -61,15 +61,12 @@ class PostIterationPlotting(GPSOCallback):
         self.marginal_plot_type = marginal_plot_type
         self.marginal_percentile = marginal_percentile
         self.from_iteration = from_iteration
-        # since this is post-iteration callback, we start at/after first
-        # iteration
-        self.iterations_counter = 1
 
     def run(self, optimiser):
         super().run(optimiser)
-        if self.iterations_counter >= self.from_iteration:
+        if optimiser.iterations >= self.from_iteration:
             filename_pat_w_it = (
-                self.filename_pattern + f"_iter{self.iterations_counter}"
+                self.filename_pattern + f"_iter{optimiser.iterations}"
             )
             plot_conditional_surrogate_distributions(
                 optimiser,
@@ -88,7 +85,6 @@ class PostIterationPlotting(GPSOCallback):
                 cmap_limits=self.gp_mean_limits,
                 fname=filename_pat_w_it + f"_tree{self.plot_ext}",
             )
-        self.iterations_counter += 1
 
 
 class PostUpdateLogging(GPSOCallback):

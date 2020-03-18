@@ -144,12 +144,12 @@ class TestCallbacks(unittest.TestCase):
         rmtree(os.path.join(TEMP_FOLDER, "checkpoints"))
 
         # now test plots after each iteration
-        n_iterations = self.opt_done.callbacks[0].iterations_counter
+        n_iterations = self.opt_done.iterations
         from_iter = self.opt_done.callbacks[0].from_iteration
         extension = self.opt_done.callbacks[0].plot_ext
         all_files = os.listdir(TEMP_FOLDER)
         # assert number of plots
-        self.assertEqual(len(all_files), (n_iterations - from_iter) * 3)
+        self.assertEqual(len(all_files), (n_iterations - from_iter + 1) * 3)
         # assert all are png
         self.assertTrue(all(fname.endswith(extension) for fname in all_files))
 
