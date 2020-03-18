@@ -1,7 +1,9 @@
 """
 Optimisation using Bayesian GP regression leveraging GPFlow.
 """
+import json
 import logging
+import os
 from enum import Enum, auto, unique
 from functools import partial
 
@@ -13,6 +15,7 @@ from scipy.special import erfcinv
 
 from .gp_surrogate import GPPoint, GPSurrogate, PointLabels
 from .param_space import NORM_PARAMS_BOUNDS, ParameterSpace
+from .utils import JSON_EXT, PKL_EXT, load_json, make_dirs
 
 
 @unique
@@ -54,6 +57,84 @@ class GPSOptimiser:
     """
     Main class for GP surrogate optimisation.
     """
+
+    SAVE_ATTRS = [
+        "iterations",
+        "budget",
+        "eval_repeats",
+        "last_explored_levels",
+        "last_update_idx",
+        "method",
+        "max_depth",
+        "stop_cond",
+        "update_cycle",
+        "n_eval_counter",
+        "n_workers",
+        "expl_seed",
+    ]
+    PARAM_SPACE_FILE = f"parameter_space{PKL_EXT}"
+    OPT_ATTRS_FILE = f"opt_attributes{JSON_EXT}"
+
+    @classmethod
+    def resume_from_saved(
+        cls,
+        folder,
+        additional_budget,
+        objective_function,
+        eval_repeats_function=np.mean,
+        callbacks=None,
+        saver=None,
+    ):
+        """
+        Resume optimisation from saved optimiser. Callbacks and saver are not
+        saved so need to be passed again.
+
+        :param folder: path from which to load the optimiser's state
+        :type folder: str
+        :param additional_budget: budget for cycles to resume for
+        :type additional_budget: int
+        :param objective_function: objective function to evaluate the score,
+            must be callable and take unnormalised parameters as an argument
+            and output scalar score
+        :type objective_function: callable
+        :param eval_repeats_function: function for aggregating multiple
+            evaluations (see `eval_repeats`), has to take axis as an argument,
+            good choices are mean, median or max; their nan- version can be
+            used as well, when the stochastic evaluation might expectedly fail
+        :type eval_repeats_function: callable
+        :param callbacks: list of (initialised) user-defined callbacks
+        :type callbacks: list[GPSOCallback|None]
+        :param saver: saver object, which is able to save intermediate results
+            (e.g. timeseries from objective function), if passed, it has to
+            implement `save_runs` method - ideal candidate is `TableSaver`
+            which is part of `gpso` and saves results to HDF file, if saver is
+            passed, the objective function has to return (result, score)
+        :type saver: object|None
+        """
+        # load parameter space
+        param_space = ParameterSpace.from_file(
+            os.path.join(folder, cls.PARAM_SPACE_FILE)
+        )
+        # load surrogate
+        gp_surr = GPSurrogate.from_saved(folder)
+        # load attributes
+        opt_attrs = load_json(os.path.join(folder, cls.OPT_ATTRS_FILE))
+
+        # init optimiser
+        optimiser = cls(
+            parameter_space=param_space, callbacks=callbacks, saver=saver
+        )
+        # assign attribute values from saved file
+        for attr, value in opt_attrs.items():
+            setattr(optimiser, attr, value)
+        # assign GPSurrogate from saved file
+        optimiser.gp_surr = gp_surr
+        assert callable(objective_function)
+        optimiser.obj_func = objective_function
+        assert callable(eval_repeats_function)
+        optimiser.eval_repeats_function = partial(eval_repeats_function, axis=0)
+
+        return optimiser.resume_run(additional_budget=additional_budget)
 
     def __init__(
         self,
@@ -136,6 +217,7 @@ class GPSOptimiser:
         self.stop_cond = stopping_condition
         self.update_cycle = update_cycle
         self.n_eval_counter = 0
+        self.iterations = 0
         self.n_workers = n_workers
 
         if callbacks is None:
@@ -469,19 +551,17 @@ class GPSOptimiser:
             np.array(scores).astype(np.float).reshape((self.eval_repeats, -1))
         )
 
-    def _stopping_condition(self, iteration):
+    def _stopping_condition(self):
         """
         Evaluate stopping condition.
 
-        :param iteration: current number of iterations
-        :type iteration: int
         :return: whether we should or not
         :rtype: bool
         """
         if self.stop_cond == "evaluations":
             return self.n_eval_counter < self.budget
         elif self.stop_cond == "iterations":
-            return iteration < self.budget
+            return self.iterations < self.budget
         elif self.stop_cond == "depth":
             return self.param_space.max_depth <= self.budget
 
@@ -526,6 +606,7 @@ class GPSOptimiser:
         self.eval_repeats = eval_repeats
         assert callable(eval_repeats_function)
         self.eval_repeats_function = partial(eval_repeats_function, axis=0)
+        self.expl_seed = kwargs.pop("seed", None)
         logging.info(
             f"Starting {self.param_space.ndim}-dimensional optimisation with "
             f"budget of {self.budget} objective function evaluations..."
@@ -540,24 +621,23 @@ class GPSOptimiser:
         # iterate while condition is True - so first set it to True and
         # evaluate each iteration
         cond = True
-        iterations = 0
         while cond:
             self._run_callbacks(callback_type=CallbackTypes.pre_iteration)
 
             # explore
             self._tree_explore(
-                levels_to_explore=explore_levels, seed=kwargs.pop("seed", None)
+                levels_to_explore=explore_levels, seed=self.expl_seed
             )
             # select
             explore_levels = self._tree_select()
             # update
             update_idx = self._gp_update(update_idx)
 
-            iterations += 1
+            self.iterations += 1
             logging.info(
-                f"After {iterations}th iteration: \n\t number of obj. func. "
-                f"evaluations: {self.n_eval_counter} \n\t highest score: "
-                f"{self.gp_surr.highest_score.score_mu} \n\t highest UCB: "
+                f"After {self.iterations}th iteration: \n\t number of obj. "
+                f"func. evaluations: {self.n_eval_counter} \n\t highest score:"
+                f" {self.gp_surr.highest_score.score_mu} \n\t highest UCB: "
                 f"{self.gp_surr.highest_ucb.score_ucb}"
             )
             logging.debug(
@@ -569,12 +649,98 @@ class GPSOptimiser:
             self._run_callbacks(callback_type=CallbackTypes.post_iteration)
 
             # reevaluate condition based on the condition itself and its budget
-            cond = self._stopping_condition(iterations)
+            cond = self._stopping_condition()
 
         logging.info(
             "Done. Highest evaluated score: "
             f"{self.gp_surr.highest_score.score_mu}"
         )
         self._run_callbacks(callback_type=CallbackTypes.pre_finalise)
+        self.last_explored_levels = explore_levels
+        self.last_update_idx = update_idx
 
         return self.gp_surr.highest_score
+
+    def resume_run(self, additional_budget):
+        """
+        Resume optimisation for additional budget cycles.
+
+        :param additional_budget: budget for cycles to resume for
+        :type additional_budget: int
+        """
+        assert callable(self.obj_func)
+        assert callable(self.eval_repeats_function)
+        assert self.iterations > 0
+        self.budget += additional_budget
+        logging.info(
+            "Resuming optimisation for with additional budget of "
+            f"{additional_budget}"
+        )
+
+        # iterate while condition is True - so first set it to True and
+        # evaluate each iteration
+        explore_levels = self.last_explored_levels
+        update_idx = self.last_update_idx
+        cond = True
+        while cond:
+            self._run_callbacks(callback_type=CallbackTypes.pre_iteration)
+
+            # explore
+            self._tree_explore(
+                levels_to_explore=explore_levels, seed=self.expl_seed
+            )
+            # select
+            explore_levels = self._tree_select()
+            # update
+            update_idx = self._gp_update(update_idx)
+
+            self.iterations += 1
+            logging.info(
+                f"After {self.iterations}th iteration: \n\t number of obj. "
+                f"func. evaluations: {self.n_eval_counter} \n\t highest score:"
+                f" {self.gp_surr.highest_score.score_mu} \n\t highest UCB: "
+                f"{self.gp_surr.highest_ucb.score_ucb}"
+            )
+            logging.debug(
+                f"\n\t Total number of points: {len(self.gp_surr.points)} \n\t"
+                f" evaluated points: {self.gp_surr.num_evaluated} \n\t"
+                f" GP-based estimates: {self.gp_surr.num_gp_based} \n\t"
+                f" depth of the tree: {self.param_space.max_depth}"
+            )
+            self._run_callbacks(callback_type=CallbackTypes.post_iteration)
+
+            # reevaluate condition based on the condition itself and its budget
+            cond = self._stopping_condition()
+
+        logging.info(
+            "Done. Highest evaluated score: "
+            f"{self.gp_surr.highest_score.score_mu}"
+        )
+        self._run_callbacks(callback_type=CallbackTypes.pre_finalise)
+        self.last_explored_levels = explore_levels
+        self.last_update_idx = update_idx
+
+        return self.gp_surr.highest_score
+
+    def save_state(self, folder):
+        """
+        Save current state of the optimisation so that it can be resumed.
+
+        :param folder: path to which save the optimiser's state
+        :type folder: str
+        """
+        make_dirs(folder)
+        logging.warning(f"When saving, all callbacks and saver will be lost!")
+        # save parameter space
+        self.param_space.save(os.path.join(folder, self.PARAM_SPACE_FILE))
+        # save surrogate
+        self.gp_surr.save(folder)
+        # save optimiser attributes
+        opt_attrs = {}
+        for attr in self.SAVE_ATTRS:
+            opt_attrs[attr] = getattr(self, attr)
+        with open(
+            os.path.join(folder, self.OPT_ATTRS_FILE), "w"
+        ) as file_handler:
+            file_handler.write(json.dumps(opt_attrs))
+        logging.info(f"Saved optimiser to {folder}")
