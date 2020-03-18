@@ -9,7 +9,7 @@ import re
 import unittest
 from shutil import rmtree
 
-from gpso.utils import JSON_EXT, LOG_EXT, load_json, set_logger
+from gpso.utils import JSON_EXT, LOG_EXT, load_json, make_dirs, set_logger
 
 
 class TestUtils(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestUtils(unittest.TestCase):
     )
     TEST_DICT = {"list1": ["a", "b", "c"], "float": 12.3, "string": "hello"}
     JSON_FILE = f"test{JSON_EXT}"
-    LOG_FILE = f"log{LOG_EXT}"
+    LOG_FILE = f"log"
     LOGS_TO_WRITE = {
         "INFO": "test info",
         "DEBUG": "test debug",
@@ -42,6 +42,23 @@ class TestUtils(unittest.TestCase):
 
         self.assertDictEqual(load_json(filename), self.TEST_DICT)
 
+    LOGGER = logging.getLogger(__name__)
+
+    def test_make_dirs(self):
+        # make new dir
+        make_dirs(os.path.join(self.TEMP_FOLDER, "new_test_dir"))
+        self.assertTrue(
+            os.path.exists(os.path.join(self.TEMP_FOLDER, "new_test_dir"))
+        )
+        root_logger = logging.getLogger()
+        with self.assertLogs(root_logger, level="WARNING") as cm:
+            make_dirs(os.path.join(self.TEMP_FOLDER, "new_test_dir"))
+        print(cm.output)
+        self.assertTrue(
+            "tests/temp/new_test_dir could not be created: [Errno 17] File"
+            " exists:" in cm.output[0],
+        )
+
     def test_logger(self):
         logname = os.path.join(self.TEMP_FOLDER, self.LOG_FILE)
         set_logger(log_filename=logname, log_level=logging.DEBUG)
@@ -50,7 +67,7 @@ class TestUtils(unittest.TestCase):
             func = getattr(logging, line.lower())
             func(self.LOGS_TO_WRITE[line])
         # read log file
-        log_read = open(logname).readlines()
+        log_read = open(logname + LOG_EXT).readlines()
         # check line by line
         for log_line, log_wanted in zip(log_read, self.LOGS_TO_WRITE):
             # find key in log_line

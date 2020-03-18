@@ -9,7 +9,6 @@ from shutil import rmtree
 
 import gpflow
 import numpy as np
-import pytest
 from gpso.gp_surrogate import (
     DUPLICATE_TOLERANCE,
     GPListOfPoints,
