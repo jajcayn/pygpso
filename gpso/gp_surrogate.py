@@ -150,10 +150,14 @@ class GPSurrogate:
         gpr_info = load_json(os.path.join(folder, cls.GPR_INFO))
         # recreate kernel
         assert hasattr(gpflow.kernels, gpr_info["gpr_kernel"])
-        gp_kernel = getattr(gpflow.kernels, gpr_info["gpr_kernel"])()
+        gp_kernel = getattr(gpflow.kernels, gpr_info["gpr_kernel"])(
+            lengthscales=np.ones(gpr_info["gpr_kernel_shape"])
+        )
         # recreate mean function
         assert hasattr(gpflow.mean_functions, gpr_info["gpr_meanf"])
-        gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])()
+        gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])(
+            np.zeros(gpr_info["gpr_meanf_shape"])
+        )
 
         # create placeholder model
         gpr_model = gpflow.models.GPR(
@@ -419,7 +423,11 @@ class GPSurrogate:
         # save other info to json
         save_info = {
             "gpr_kernel": self.gpr_model.kernel.__class__.__name__,
+            "gpr_kernel_shape": self.gpr_model.kernel.lengthscales.shape.as_list(),
             "gpr_meanf": self.gpr_model.mean_function.__class__.__name__,
+            "gpr_meanf_shape": self.gpr_model.mean_function.parameters[
+                0
+            ].shape.as_list(),
             "gp_varsigma": self.gp_varsigma,
             "gp_likelihood": self.gp_lik_sigma,
         }
