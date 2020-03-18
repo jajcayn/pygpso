@@ -13,7 +13,7 @@ from .plotting import (
     plot_parameter_marginal_distributions,
     plot_ternary_tree,
 )
-from .utils import JSON_EXT, PKL_EXT
+from .utils import PKL_EXT
 
 
 class PostIterationPlotting(GPSOCallback):
