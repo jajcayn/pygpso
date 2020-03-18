@@ -143,9 +143,10 @@ class TestGPSOptimiser(unittest.TestCase):
         # save
         opt.save_state(TEMP_FOLDER)
         # resume from saved for another 25 evaluations
-        best_point = GPSOptimiser.resume_from_saved(
+        best_point, opt_loaded = GPSOptimiser.resume_from_saved(
             TEMP_FOLDER, additional_budget=25, objective_function=self._obj_func
         )
+        self.assertTrue(isinstance(opt_loaded, GPSOptimiser))
         np.testing.assert_almost_equal(
             self.BEST_COORDS_v1, best_point.normed_coord
         )

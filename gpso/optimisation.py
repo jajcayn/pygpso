@@ -110,6 +110,9 @@ class GPSOptimiser:
             which is part of `gpso` and saves results to HDF file, if saver is
             passed, the objective function has to return (result, score)
         :type saver: object|None
+        :return: point with highest score of objective function and loaded
+            optimiser
+        :rtype: (`gpso.gp_surrogate.GPPoint`, `gpso.optimisation.GPSOptimiser`)
         """
         # load parameter space
         param_space = ParameterSpace.from_file(
@@ -134,7 +137,10 @@ class GPSOptimiser:
         assert callable(eval_repeats_function)
         optimiser.eval_repeats_function = partial(eval_repeats_function, axis=0)
 
-        return optimiser.resume_run(additional_budget=additional_budget)
+        return (
+            optimiser.resume_run(additional_budget=additional_budget),
+            optimiser,
+        )
 
     def __init__(
         self,
@@ -667,6 +673,8 @@ class GPSOptimiser:
 
         :param additional_budget: budget for cycles to resume for
         :type additional_budget: int
+        :return: point with highest score of objective function
+        :rtype: `gpso.gp_surrogate.GPPoint`
         """
         assert callable(self.obj_func)
         assert callable(self.eval_repeats_function)
