@@ -6,3 +6,7 @@ Hadida, J., Sotiropoulos, S. N., Abeysuriya, R. G., Woolrich, M. W., & Jbabdi,
     S. (2018). Bayesian Optimisation of Large-Scale Biophysical Networks.
     NeuroImage, 174, 219-236.
 """
+
+from .gp_surrogate import GPSurrogate
+from .optimisation import GPSOptimiser
+from .param_space import ParameterSpace

@@ -8,14 +8,14 @@ from shutil import rmtree
 
 import numpy as np
 import pytest
+from gpso import GPSOptimiser, ParameterSpace
 from gpso.callbacks import (
     GPFlowCheckpoints,
     PostIterationPlotting,
     PostUpdateLogging,
     PreFinaliseSave,
 )
-from gpso.optimisation import CallbackTypes, GPSOCallback, GPSOptimiser
-from gpso.param_space import ParameterSpace
+from gpso.optimisation import CallbackTypes, GPSOCallback
 from gpso.utils import JSON_EXT, LOG_EXT, PKL_EXT, set_logger
 
 TEMP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
