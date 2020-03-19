@@ -8,8 +8,7 @@ from shutil import rmtree
 
 import numpy as np
 import pytest
-from gpso.optimisation import GPSOptimiser
-from gpso.param_space import ParameterSpace
+from gpso import GPSOptimiser, ParameterSpace
 from gpso.plotting import (
     plot_conditional_surrogate_distributions,
     plot_parameter_marginal_distributions,

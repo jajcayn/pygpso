@@ -8,9 +8,8 @@ from shutil import rmtree
 
 import numpy as np
 import pytest
+from gpso import GPSOptimiser, ParameterSpace
 from gpso.gp_surrogate import GPPoint
-from gpso.optimisation import GPSOptimiser
-from gpso.param_space import ParameterSpace
 
 TEMP_FOLDER = "temp_optimisation_test"
 
