@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# need to install also optional requirements for this...
+pip install -r requirements.txt
+pip install -r requirements_optional.txt
+python setup.py install
