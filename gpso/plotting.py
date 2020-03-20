@@ -24,6 +24,9 @@ N_BINS = 10
 RADIUS_EVAL = 8e-3
 RADIUS_GP = 5e-3
 
+# number of decimal numbers for x- and y-ticklabels
+TICK_DECIMALS = 3
+
 
 def plot_ternary_tree(
     param_space,
@@ -436,10 +439,13 @@ def plot_conditional_surrogate_distributions(
         else:
             axes[-1, column].set_xticks(np.linspace(0, granularity, 5))
         axes[-1, column].set_xticklabels(
-            np.linspace(
-                gpso_optimiser.param_space.scaler.data_min_[column],
-                gpso_optimiser.param_space.scaler.data_max_[column],
-                5,
+            np.around(
+                np.linspace(
+                    gpso_optimiser.param_space.scaler.data_min_[column],
+                    gpso_optimiser.param_space.scaler.data_max_[column],
+                    5,
+                ),
+                decimals=TICK_DECIMALS,
             )
         )
     # set correct y-ticks per original coordinates
@@ -449,10 +455,13 @@ def plot_conditional_surrogate_distributions(
                 continue
             axes[row, column].set_yticks(np.linspace(0, granularity, 5))
             axes[row, column].set_yticklabels(
-                np.linspace(
-                    gpso_optimiser.param_space.scaler.data_min_[row],
-                    gpso_optimiser.param_space.scaler.data_max_[row],
-                    5,
+                np.around(
+                    np.linspace(
+                        gpso_optimiser.param_space.scaler.data_min_[row],
+                        gpso_optimiser.param_space.scaler.data_max_[row],
+                        5,
+                    ),
+                    decimals=TICK_DECIMALS,
                 )
             )
 
