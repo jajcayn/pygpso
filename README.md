@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/jajcayn/pygpso.svg?branch=master)](https://travis-ci.com/jajcayn/pygpso) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Build Status](https://travis-ci.com/jajcayn/pygpso.svg?branch=master)](https://travis-ci.com/jajcayn/pygpso) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # pyGPSO
 *Optimise anything (but mainly large-scale biophysical models) using Gaussian Processes surrogate*
@@ -30,7 +30,7 @@ For those who want to optimise right away just
 ```bash
 pip install git+https://github.com/jajcayn/pygpso
 ```
-and go ahead! Make sure to check [example notebook](examples/optimisation_example.ipynb) how it works and what it can do.
+and go ahead! Make sure to check example notebooks in [the **examples** directory](examples/) to see how it works and what it can do. Or, alternatively, you can run interactive notebooks in binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples).
 
 ### Go proper
 When you are the type of girl or guy who likes to install packages properly, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
@@ -38,7 +38,7 @@ When you are the type of girl or guy who likes to install packages properly, sta
 git clone https://github.com/jajcayn/pygpso
 cd pygpso/
 pip install -r requirements.txt
-# optionally
+# optionally, but recommended
 pip install -r requirements_optional.txt
 pip install .
 ```
@@ -48,7 +48,7 @@ pytest tests/
 ```
 
 ## Usage
-A guide on how to optimise and what can be done using this package is given as jupyter notebooks in [the **examples** directory](examples/). You can also try them out live thanks to <binder>.
+A guide on how to optimise and what can be done using this package is given as jupyter notebooks in [the **examples** directory](examples/). You can also try them out live thanks to binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples).
 
 The basic idea is to initialise the parameter space in which the optimisation is to be run and then iteratively dig deeper and evaluate the objective function when necessary
 ```python
@@ -72,18 +72,18 @@ opt = GPSOptimiser(parameter_space=space, n_workers=4)
 best_point = opt.run(objective_function)
 ```
 
-The package offers plotting functions for visualising the results. Again, those are documented and showcased in the [example notebook](examples/0-basic-optimisation.ipynb).
+The package also offers plotting functions for visualising the results. Again, those are documented and showcased in [the **examples** directory](examples/).
 
 ### Notes
 Gaussian Processes regression uses normalised coordinates within the bounds [0, 1]. All normalisation and de-normalisation is done automatically, however when you want to call `predict_y` on GPR model, do not forget to pass normalised coordinates. The normalisation is handled by `sklearn.MinMaxScaler` and `ParameterSpace` instance offers a convenience functions for this: `ParameterSpace.normalise_coords(orig_coords)` and `ParameterSpace.denormalise_coords(normed_coords)`.
 
 Plotting of the ternary tree (`gpso.plotting.plot_ternary_tree()`) requires `igraph` package, whose layout function is exploited. If you want to see the resulting beautiful tree, please install `python-igraph`.
 
-Support of saver (for saving models run, e.g. timeseries along with the optimisation) is provided by `PyTables` (and `pandas`).
+Support of saver (for saving models run, e.g. timeseries along with the optimisation) is provided by `PyTables` (and `pandas` if you're saving results to `DataFrame`s).
  
 ## Known bugs and future improvements
 * currently cannot be installed through `pip` from PyPI, since `GPFlow` 2.0 is not on PyPI yet
-* saving of GP surrogate is now hacky, as `GPFlow` not yet officially supports saving / loading of the models due to bug in `tensorflow`. The hacky way supports basic kernels and mean functions, i.e. no kernel operations (such as sum or multiplication) allowed (for now).
+* saving of GP surrogate is now hacky, as `GPFlow` not yet officially supports saving / loading of the models due to [bug in `tensorflow`](https://github.com/tensorflow/tensorflow/issues/34908). The hacky way, unfortunately, only supports basic kernels and mean functions, i.e. no kernel operations (such as sum or multiplication) allowed (for now).
 * once `GPFlow` 2.0 is out there and supports saving, this package will be updated accordingly
 
 ## Final notes
