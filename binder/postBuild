@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # need to install also optional requirements for this...
-pip3 install -r ../requirements_optional.txt
+pip install -r ../requirements_optional.txt
