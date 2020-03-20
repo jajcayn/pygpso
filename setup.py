@@ -27,7 +27,7 @@ for req in extra_reqs:
 
 setuptools.setup(
     name="pygpso",
-    version="0.3",
+    version="0.4",
     description="Bayesian optimisation method leveraging Gaussian Processes "
     "surrogate",
     long_description=long_description,
