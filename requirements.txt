@@ -8,6 +8,5 @@ matplotlib
 flake8
 pytest
 black
-gast==0.2.2  # tensorflow 2.1.0 explicitely needs gast 0.2.2
 tensorflow>=2.1.0
 gpflow>=2.0.0

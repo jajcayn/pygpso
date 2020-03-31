@@ -39,6 +39,9 @@ class TestBaseCallback(unittest.TestCase):
 
 
 class TestCallbacks(unittest.TestCase):
+    _ = pytest.importorskip("igraph")
+    _ = pytest.importorskip("pandas")
+    _ = pytest.importorskip("tables")
     callbacks = [
         PostIterationPlotting(
             filename_pattern=os.path.join(
