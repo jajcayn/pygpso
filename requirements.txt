@@ -10,4 +10,4 @@ pytest
 black
 gast==0.2.2  # tensorflow 2.1.0 explicitely needs gast 0.2.2
 tensorflow>=2.1.0
-git+https://github.com/GPflow/GPflow.git@develop#egg=gpflow
+gpflow>=2.0.0
