@@ -28,7 +28,7 @@ For those who want to optimise right away just
 ```bash
 pip install pygpso
 ```
-and go ahead! Make sure to check example notebooks in [the **examples** directory](examples/) to see how it works and what it can do. Or, alternatively, you can run interactive notebooks in binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples
+and go ahead! Make sure to check example notebooks in [the **examples** directory](examples/) to see how it works and what it can do. Or, alternatively, you can run interactive notebooks in binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples)
 
 ### Go proper
 When you are the type of girl or guy who likes to install packages properly, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
