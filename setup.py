@@ -1,4 +1,3 @@
-import re
 from os import path
 
 import setuptools
@@ -10,14 +9,6 @@ with open(path.join(this_directory, "README_pypi.md"), encoding="utf-8") as f:
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
-checked_requirements = []
-for requirement in requirements:
-    if requirement.startswith("git+"):
-        # find package name from git address
-        pkg_name = re.findall(r"\/([a-zA-Z]*)\.git", requirement)[0]
-        requirement = f"{pkg_name.lower()} @ " + requirement
-    checked_requirements.append(requirement)
-
 extra_requirements = {}
 with open("requirements_optional.txt") as f:
     extra_reqs = f.read().splitlines()
@@ -27,7 +18,7 @@ for req in extra_reqs:
 
 setuptools.setup(
     name="pygpso",
-    version="0.4",
+    version="0.4.1",
     description="Bayesian optimisation method leveraging Gaussian Processes "
     "surrogate",
     long_description=long_description,
@@ -47,7 +38,7 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Medical Science Apps.",
     ],
     python_requires=">=3.6",
-    install_requires=checked_requirements,
+    install_requires=requirements,
     extras_require=extra_requirements,
     include_package_data=True,
 )
