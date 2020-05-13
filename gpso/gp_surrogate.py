@@ -6,12 +6,13 @@ import logging
 import os
 import pickle
 from collections import namedtuple
-from enum import Enum, unique
 
 import gpflow
 import numpy as np
+from scipy.special import erfcinv
 
-from .utils import JSON_EXT, PKL_EXT, load_json, make_dirs
+from .param_space import NORM_PARAMS_BOUNDS
+from .utils import JSON_EXT, PKL_EXT, PointLabels, load_json, make_dirs
 
 GP_TRAIN_MAX_ITER = 100
 DUPLICATE_TOLERANCE = 1.0e-12
@@ -115,17 +116,6 @@ class GPListOfPoints(list):
             file_handler.write(json.dumps(serialised))
 
 
-@unique
-class PointLabels(Enum):
-    """
-    Helper for leaf labels - empty, evaluated using LSBM or GPR-based.
-    """
-
-    not_assigned = 0  # when no score is yet known
-    evaluated = 1  # objective function is evaluated at the centre of the leaf
-    gp_based = 2  # score was obtained using UCB via GP
-
-
 class GPSurrogate:
     """
     Class handles GP surrogate of the objective function surface.
@@ -137,60 +127,30 @@ class GPSurrogate:
 
     @classmethod
     def from_saved(cls, folder):
-        # load points
-        points = GPListOfPoints.from_file(os.path.join(folder, cls.POINTS_FILE))
-        # get current data as saved
-        eval_points = [
-            point for point in points if point.label == PointLabels.evaluated
-        ]
-        x = np.array([point.normed_coord for point in eval_points])
-        y = np.array([point.score_mu for point in eval_points])[:, np.newaxis]
-
-        # load GPR info
-        gpr_info = load_json(os.path.join(folder, cls.GPR_INFO))
-        # recreate kernel
-        assert hasattr(gpflow.kernels, gpr_info["gpr_kernel"])
-        gp_kernel = getattr(gpflow.kernels, gpr_info["gpr_kernel"])(
-            lengthscales=np.ones(gpr_info["gpr_kernel_shape"])
-        )
-        # recreate mean function
-        assert hasattr(gpflow.mean_functions, gpr_info["gpr_meanf"])
-        gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])(
-            np.zeros(gpr_info["gpr_meanf_shape"])
-        )
-
-        # create placeholder model
-        gpr_model = gpflow.models.GPR(
-            data=(x, y),
-            kernel=gp_kernel,
-            mean_function=gp_meanf,
-            noise_variance=gpr_info["gp_likelihood"],
-        )
-        # load GPR parameters
-        with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
-            gpr_params = pickle.load(handle)
-        # assign hyperparameters
-        gpflow.utilities.multiple_assign(gpr_model, gpr_params)
-        return cls(
-            gp_kernel=gp_kernel,
-            gp_meanf=gp_meanf,
-            gauss_likelihood_sigma=gpr_info["gp_likelihood"],
-            varsigma=gpr_info["gp_varsigma"],
-            points=points,
-            gpr_model=gpr_model,
-        )
+        raise NotImplementedError
 
     def __init__(
         self,
         gp_kernel,
         gp_meanf,
-        gauss_likelihood_sigma,
-        varsigma,
+        varsigma=erfcinv(0.01),
+        gauss_likelihood_sigma=1.0e-3,
         points=None,
-        gpr_model=None,
+        gpflow_model=None,
     ):
+        """
+        :param varsigma: expected probability that UCB < f; it controls how
+            "optimistic" we are during the exploration step; at a point x
+            evaluated using GP, the UCB will be: mu(x) + varsigma*sigma(x);
+            varsigma = 1/erfc(p/100) which corresponds to the upper bound of a
+                `p` confidence interval for Gaussian likelihood kernel
+        :type varsigma: float
+        :param gp_lik_sigma: initial std of Gaussian likelihood function (in
+            normalised units)
+        :type gp_lik_sigma: float
+        """
         # init GP model
-        self.gpr_model = gpr_model
+        self.gpflow_model = gpflow_model
         self.gp_varsigma = varsigma
         assert isinstance(gp_kernel, gpflow.kernels.Kernel)
         self.gp_kernel = gp_kernel
@@ -288,36 +248,8 @@ class GPSurrogate:
         return x
 
     def _gp_train(self, x, y):
-        assert x.shape[0] == y.shape[0]
-        assert x.ndim == 2 and y.ndim == 2
-
-        if self.gpr_model is None:
-            # if None, init model
-            self.gpr_model = gpflow.models.GPR(
-                data=(x, y),
-                kernel=self.gp_kernel,
-                mean_function=self.gp_meanf,
-                noise_variance=self.gp_lik_sigma,
-            )
-        else:
-            # just assign new data
-            self.gpr_model.data = (x, y)
-
-        optimizer = gpflow.optimizers.Scipy()
-
-        def objective_closure():
-            return -self.gpr_model.log_marginal_likelihood()
-
-        opt_logs = optimizer.minimize(
-            objective_closure,
-            self.gpr_model.trainable_variables,
-            options=dict(maxiter=GP_TRAIN_MAX_ITER),
-        )
-        if not opt_logs.success:
-            logging.error(
-                "Something went wrong, optimisation was not successful; "
-                f"log: {opt_logs}"
-            )
+        # need to redefine for each type of model
+        raise NotImplementedError
 
     def append(self, coords, scores):
         """
@@ -352,9 +284,9 @@ class GPSurrogate:
         :param normed_coords: normalised coordinates at which to predict
         :type normed_coords: np.ndarray
         """
-        assert isinstance(self.gpr_model, gpflow.models.GPModel)
+        assert isinstance(self.gpflow_model, gpflow.models.GPModel)
         # predict and include the noise variance
-        mean, var = self.gpr_model.predict_y(normed_coords)
+        mean, var = self.gpflow_model.predict_y(normed_coords)
         # append to points
         for idx in range(normed_coords.shape[0]):
             self.points.append(
@@ -379,9 +311,9 @@ class GPSurrogate:
         :return: mean, var and UCB for the best score
         :rtype: (float, float, float)
         """
-        assert isinstance(self.gpr_model, gpflow.models.GPModel)
+        assert isinstance(self.gpflow_model, gpflow.models.GPModel)
         # predict and include the noise variance
-        mean, var = self.gpr_model.predict_y(normed_coords)
+        mean, var = self.gpflow_model.predict_y(normed_coords)
         ucb = mean + self.gp_varsigma * var
         best_ucb = np.argmax(ucb)
         return float(mean[best_ucb]), float(var[best_ucb]), float(ucb[best_ucb])
@@ -412,20 +344,126 @@ class GPSurrogate:
         :param folder: path to which save the model
         :type folder: str
         """
+        raise NotImplementedError
+
+
+class GPRSurrogate(GPSurrogate):
+    """
+    Surrogate exploiting vanilla GP Regression model.
+    """
+
+    @classmethod
+    def default(cls):
+        """
+        Return GPR model with sensible defaults.
+        """
+        return cls(
+            gp_kernel=gpflow.kernels.Matern52(
+                lengthscales=np.sum(NORM_PARAMS_BOUNDS) * 0.25, variance=1.0,
+            ),
+            gp_meanf=gpflow.mean_functions.Constant(0.0),
+            gauss_likelihood_sigma=1.0e-3,
+            varsigma=erfcinv(0.01),
+        )
+
+    @classmethod
+    def from_saved(cls, folder):
+        # load points
+        points = GPListOfPoints.from_file(os.path.join(folder, cls.POINTS_FILE))
+        # get current data as saved
+        eval_points = [
+            point for point in points if point.label == PointLabels.evaluated
+        ]
+        x = np.array([point.normed_coord for point in eval_points])
+        y = np.array([point.score_mu for point in eval_points])[:, np.newaxis]
+
+        # load GPR info
+        gpr_info = load_json(os.path.join(folder, cls.GPR_INFO))
+        # recreate kernel
+        assert hasattr(gpflow.kernels, gpr_info["gpr_kernel"])
+        gp_kernel = getattr(gpflow.kernels, gpr_info["gpr_kernel"])(
+            lengthscales=np.ones(gpr_info["gpr_kernel_shape"])
+        )
+        # recreate mean function
+        assert hasattr(gpflow.mean_functions, gpr_info["gpr_meanf"])
+        gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])(
+            np.zeros(gpr_info["gpr_meanf_shape"])
+        )
+
+        # create placeholder model
+        gpflow_model = gpflow.models.GPR(
+            data=(x, y),
+            kernel=gp_kernel,
+            mean_function=gp_meanf,
+            noise_variance=gpr_info["gp_likelihood"],
+        )
+        # load GPR parameters
+        with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
+            gpr_params = pickle.load(handle)
+        # assign hyperparameters
+        gpflow.utilities.multiple_assign(gpflow_model, gpr_params)
+        return cls(
+            gp_kernel=gp_kernel,
+            gp_meanf=gp_meanf,
+            gauss_likelihood_sigma=gpr_info["gp_likelihood"],
+            varsigma=gpr_info["gp_varsigma"],
+            points=points,
+            gpflow_model=gpflow_model,
+        )
+
+    def _gp_train(self, x, y):
+        assert x.shape[0] == y.shape[0]
+        assert x.ndim == 2 and y.ndim == 2
+
+        if self.gpflow_model is None:
+            # if None, init model
+            self.gpflow_model = gpflow.models.GPR(
+                data=(x, y),
+                kernel=self.gp_kernel,
+                mean_function=self.gp_meanf,
+                noise_variance=self.gp_lik_sigma,
+            )
+        else:
+            # just assign new data
+            self.gpflow_model.data = (x, y)
+
+        optimizer = gpflow.optimizers.Scipy()
+
+        def objective_closure():
+            return -self.gpflow_model.log_marginal_likelihood()
+
+        opt_logs = optimizer.minimize(
+            objective_closure,
+            self.gpflow_model.trainable_variables,
+            options=dict(maxiter=GP_TRAIN_MAX_ITER),
+        )
+        if not opt_logs.success:
+            logging.error(
+                "Something went wrong, optimisation was not successful; "
+                f"log: {opt_logs}"
+            )
+
+    def save(self, folder):
+        """
+        :param folder: path to which save the model
+        :type folder: str
+        """
         make_dirs(folder)
         # save list of points
         self.points.save(filename=os.path.join(folder, self.POINTS_FILE))
         # hack to untie weak references
-        _ = gpflow.utilities.freeze(self.gpr_model)
+        _ = gpflow.utilities.freeze(self.gpflow_model)
         # save GPR model to pickle - now doable
         with open(os.path.join(folder, self.GPR_FILE), "wb") as handle:
-            pickle.dump(gpflow.utilities.parameter_dict(self.gpr_model), handle)
+            pickle.dump(
+                gpflow.utilities.parameter_dict(self.gpflow_model), handle
+            )
         # save other info to json
         save_info = {
-            "gpr_kernel": self.gpr_model.kernel.__class__.__name__,
-            "gpr_kernel_shape": self.gpr_model.kernel.lengthscales.shape.as_list(),
-            "gpr_meanf": self.gpr_model.mean_function.__class__.__name__,
-            "gpr_meanf_shape": self.gpr_model.mean_function.parameters[
+            "gpr_kernel": self.gpflow_model.kernel.__class__.__name__,
+            "gpr_kernel_shape": self.gpflow_model.kernel.lengthscales.shape.as_list(),
+            "gpr_meanf": self.gpflow_model.mean_function.__class__.__name__,
+            "gpr_meanf_shape": self.gpflow_model.mean_function.parameters[
                 0
             ].shape.as_list(),
             "gp_varsigma": self.gp_varsigma,
