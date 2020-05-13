@@ -11,7 +11,7 @@ import pytest
 from gpso import GPSOptimiser, ParameterSpace
 from gpso.gp_surrogate import GPPoint
 
-TEMP_FOLDER = "temp_optimisation_test"
+TEMP_FOLDER = "tests/temp_optimisation_test"
 
 
 class TestGPSOptimiser(unittest.TestCase):
@@ -78,7 +78,6 @@ class TestGPSOptimiser(unittest.TestCase):
             budget=50,
             stopping_condition="evaluations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=1,
         )
         best_point = opt.run(self._obj_func)
@@ -104,7 +103,6 @@ class TestGPSOptimiser(unittest.TestCase):
             budget=25,
             stopping_condition="evaluations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=1,
         )
         # optimise for 25 evaluations
@@ -134,7 +132,6 @@ class TestGPSOptimiser(unittest.TestCase):
             budget=25,
             stopping_condition="evaluations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=1,
         )
         # optimise for 25 evaluations
@@ -169,7 +166,6 @@ class TestGPSOptimiser(unittest.TestCase):
             budget=12,
             stopping_condition="iterations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=4,
         )
         best_point = opt.run(
@@ -207,7 +203,6 @@ class TestGPSOptimiser(unittest.TestCase):
             budget=50,
             stopping_condition="evaluations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=1,
             saver=saver,
         )

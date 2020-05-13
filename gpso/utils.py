@@ -5,12 +5,24 @@ Useful utilities.
 import json
 import logging
 import os
+from enum import Enum, unique
 
 LOG_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_EXT = ".log"
 JSON_EXT = ".json"
 PKL_EXT = ".pkl"
 H5_EXT = ".h5"
+
+
+@unique
+class PointLabels(Enum):
+    """
+    Helper for leaf labels - empty, evaluated using LSBM or GPR-based.
+    """
+
+    not_assigned = 0  # when no score is yet known
+    evaluated = 1  # objective function is evaluated at the centre of the leaf
+    gp_based = 2  # score was obtained using UCB via GP
 
 
 def make_dirs(path):
