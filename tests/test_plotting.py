@@ -60,7 +60,6 @@ class TestPlotting(unittest.TestCase):
             budget=50,
             stopping_condition="evaluations",
             update_cycle=1,
-            gp_lik_sigma=1.0e-3,
             n_workers=1,
         )
         opt.run(cls._obj_func)
