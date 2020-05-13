@@ -9,6 +9,7 @@ from shutil import rmtree
 
 import gpflow
 import numpy as np
+import pytest
 from gpso.gp_surrogate import (
     DUPLICATE_TOLERANCE,
     GPListOfPoints,
@@ -175,6 +176,15 @@ class TestGPSurrogate(unittest.TestCase):
 
         x = self.gp_surr.gp_based_coords
         self.assertTupleEqual(x.shape, (NUM_INIT_POINTS - NUM_EVALUATED, 2))
+
+    def test_not_implemented(self):
+        with pytest.raises(NotImplementedError):
+            _ = GPSurrogate.from_saved("")
+        self._create_gpsurrogate(0)
+        with pytest.raises(NotImplementedError):
+            self.gp_surr._gp_train(None, None)
+        with pytest.raises(NotImplementedError):
+            self.gp_surr.save("")
 
 
 class TestGPRSurrogate(unittest.TestCase):

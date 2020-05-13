@@ -370,8 +370,7 @@ class ParameterSpace(LeafNode):
         scaler = MinMaxScaler(feature_range=NORM_PARAMS_BOUNDS)
         scaler.fit(np.array(parameter_bounds).T)
 
-        if parameter_names is None:
-            parameter_names = ["" for _ in range(self.ndim)]
+        parameter_names = parameter_names or ["" for _ in range(self.ndim)]
         assert len(parameter_names) == len(parameter_bounds)
 
         # normalised coordinates for the full domain
