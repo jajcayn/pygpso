@@ -132,22 +132,30 @@ class GPSurrogate:
     def __init__(
         self,
         gp_kernel,
-        gp_meanf,
+        gp_meanf=None,
+        optimiser=gpflow.optimizers.Scipy(),
         varsigma=erfcinv(0.01),
-        gauss_likelihood_sigma=1.0e-3,
         points=None,
         gpflow_model=None,
     ):
         """
+        :param gp_kernel: kernel for GP to be used
+        :type gp_kernel: `gpflow.kernels.Kernel`
+        :param gp_meanf: mean function for GP to be used
+        :type gp_meanf: `gpflow.mean_functions.MeanFunction`|None
+        :param optimiser: optimiser to be used for training GP model
+        :type optimiser: any supported class, must implement callable
         :param varsigma: expected probability that UCB < f; it controls how
             "optimistic" we are during the exploration step; at a point x
             evaluated using GP, the UCB will be: mu(x) + varsigma*sigma(x);
             varsigma = 1/erfc(p/100) which corresponds to the upper bound of a
                 `p` confidence interval for Gaussian likelihood kernel
         :type varsigma: float
-        :param gp_lik_sigma: initial std of Gaussian likelihood function (in
-            normalised units)
-        :type gp_lik_sigma: float
+        :param points: list of GPPoints
+        :type points: list|None|`GPListOfPoints`
+        :param gpflow_model: initialised `GPFlow` model, usually None, only used
+            when loading from saved
+        :type gpflow_model: `gpflow.models.GPModel`|None
         """
         # init GP model
         self.gpflow_model = gpflow_model
@@ -156,11 +164,10 @@ class GPSurrogate:
         self.gp_kernel = gp_kernel
         assert isinstance(gp_meanf, (gpflow.mean_functions.MeanFunction, None))
         self.gp_meanf = gp_meanf
-        self.gp_lik_sigma = gauss_likelihood_sigma
+        assert hasattr(optimiser, "minimize")
+        self.optimiser = optimiser
 
-        if points is None:
-            points = []
-        self.points = GPListOfPoints(points)
+        self.points = GPListOfPoints(points or list())
 
     @property
     def num_evaluated(self):
@@ -352,6 +359,31 @@ class GPRSurrogate(GPSurrogate):
     Surrogate exploiting vanilla GP Regression model.
     """
 
+    def __init__(
+        self,
+        gp_kernel,
+        gp_meanf=None,
+        optimiser=gpflow.optimizers.Scipy(),
+        varsigma=erfcinv(0.01),
+        gauss_likelihood_sigma=1.0e-3,
+        points=None,
+        gpflow_model=None,
+    ):
+        """
+        :param gp_lik_sigma: initial std of Gaussian likelihood function (in
+            normalised units)
+        :type gp_lik_sigma: float
+        """
+        super().__init__(
+            gp_kernel=gp_kernel,
+            gp_meanf=gp_meanf,
+            optimiser=optimiser,
+            varsigma=varsigma,
+            points=points,
+            gpflow_model=gpflow_model,
+        )
+        self.gp_lik_sigma = gauss_likelihood_sigma
+
     @classmethod
     def default(cls):
         """
@@ -362,8 +394,11 @@ class GPRSurrogate(GPSurrogate):
                 lengthscales=np.sum(NORM_PARAMS_BOUNDS) * 0.25, variance=1.0,
             ),
             gp_meanf=gpflow.mean_functions.Constant(0.0),
-            gauss_likelihood_sigma=1.0e-3,
+            optimiser=gpflow.optimizers.Scipy(),
             varsigma=erfcinv(0.01),
+            gauss_likelihood_sigma=1.0e-3,
+            points=None,
+            gpflow_model=None,
         )
 
     @classmethod
@@ -427,21 +462,10 @@ class GPRSurrogate(GPSurrogate):
             # just assign new data
             self.gpflow_model.data = (x, y)
 
-        optimizer = gpflow.optimizers.Scipy()
-
-        def objective_closure():
-            return -self.gpflow_model.log_marginal_likelihood()
-
-        opt_logs = optimizer.minimize(
-            objective_closure,
+        self.optimiser.minimize(
+            self.gpflow_model.training_loss,
             self.gpflow_model.trainable_variables,
-            options=dict(maxiter=GP_TRAIN_MAX_ITER),
         )
-        if not opt_logs.success:
-            logging.error(
-                "Something went wrong, optimisation was not successful; "
-                f"log: {opt_logs}"
-            )
 
     def save(self, folder):
         """
