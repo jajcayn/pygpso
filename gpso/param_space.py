@@ -12,8 +12,7 @@ from anytree.exporter import DictExporter
 from anytree.importer import DictImporter
 from sklearn.preprocessing import MinMaxScaler
 
-from .gp_surrogate import PointLabels
-from .utils import PKL_EXT
+from .utils import PKL_EXT, PointLabels
 
 NORM_PARAMS_BOUNDS = (0, 1)
 

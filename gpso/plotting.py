@@ -348,7 +348,7 @@ def plot_conditional_surrogate_distributions(
                 # coords of best point
                 ii = best_point_coords[0, param1_idx]
                 jj = best_point_coords[0, param2_idx]
-                mean, var = gpso_optimiser.gp_surr.gpr_model.predict_y(
+                mean, var = gpso_optimiser.gp_surr.gpflow_model.predict_y(
                     predict_at
                 )
                 # mean to the lower triangle

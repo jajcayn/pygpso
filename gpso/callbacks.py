@@ -98,7 +98,7 @@ class PostUpdateLogging(GPSOCallback):
         super().run(optimiser)
         logging.info(
             "GPR summary:\n"
-            + tabulate_module_summary(optimiser.gp_surr.gpr_model)
+            + tabulate_module_summary(optimiser.gp_surr.gpflow_model)
         )
 
 
@@ -140,7 +140,7 @@ class GPFlowCheckpoints(GPSOCallback):
         self.n_evals.assign(optimiser.n_eval_counter)
         if self.first_update:
             ckpt = tf.train.Checkpoint(
-                model=optimiser.gp_surr.gpr_model, evluations=self.n_evals,
+                model=optimiser.gp_surr.gpflow_model, evluations=self.n_evals,
             )
             self.manager = tf.train.CheckpointManager(
                 ckpt, self.path, max_to_keep=self.max_to_keep

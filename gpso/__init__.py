@@ -7,6 +7,6 @@ Hadida, J., Sotiropoulos, S. N., Abeysuriya, R. G., Woolrich, M. W., & Jbabdi,
     NeuroImage, 174, 219-236.
 """
 
-from .gp_surrogate import GPSurrogate
+from .gp_surrogate import GPRSurrogate
 from .optimisation import GPSOptimiser
 from .param_space import ParameterSpace
