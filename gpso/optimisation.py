@@ -7,13 +7,11 @@ import os
 from enum import Enum, auto, unique
 from functools import partial
 
-import gpflow
 import numpy as np
 from anytree import PreOrderIter
 from pathos.pools import ProcessPool
-from scipy.special import erfcinv
 
-from .gp_surrogate import GPPoint, GPSurrogate, PointLabels
+from .gp_surrogate import GPPoint, GPRSurrogate, GPSurrogate, PointLabels
 from .param_space import NORM_PARAMS_BOUNDS, ParameterSpace
 from .utils import JSON_EXT, PKL_EXT, load_json, make_dirs
 
@@ -81,6 +79,7 @@ class GPSOptimiser:
         folder,
         additional_budget,
         objective_function,
+        gp_surrogate=GPRSurrogate,
         eval_repeats_function=np.mean,
         callbacks=None,
         saver=None,
@@ -97,6 +96,9 @@ class GPSOptimiser:
             must be callable and take unnormalised parameters as an argument
             and output scalar score
         :type objective_function: callable
+        :param gp_surrogate: GP surrogate class used in original implementation,
+            only class, not initialised!
+        :type gp_surrogate: `gpso.gp_surrogate.GPSurrogate` not initialised
         :param eval_repeats_function: function for aggregating multiple
             evaluations (see `eval_repeats`), has to take axis as an argument,
             good choices are mean, median or max; their nan- version can be
@@ -119,7 +121,7 @@ class GPSOptimiser:
             os.path.join(folder, cls.PARAM_SPACE_FILE)
         )
         # load surrogate
-        gp_surr = GPSurrogate.from_saved(folder)
+        gp_surr = gp_surrogate.from_saved(folder)
         # load attributes
         opt_attrs = load_json(os.path.join(folder, cls.OPT_ATTRS_FILE))
 
@@ -145,21 +147,22 @@ class GPSOptimiser:
     def __init__(
         self,
         parameter_space,
+        gp_surrogate=None,
         exploration_method="tree",
         exploration_depth=5,
         budget=100,
         stopping_condition="evaluations",
         update_cycle=1,
-        varsigma=erfcinv(0.01),
-        gp_lik_sigma=1.0e-3,
         n_workers=1,
         callbacks=None,
         saver=None,
-        **kwargs,
     ):
         """
         :param parameter_space: parameter space to explore
         :type parameter_space: `gpso.param_space.ParameterSpace`
+        :param gp_surrogate: Gaussian Processes surrogate object, if None, will
+            use default (sensible) settings
+        :type gp_surrogate: `gpso.gp_surrogate.GPSurrogate`|None
         :param exploration_method: method used for exploration of children
             intervals: `tree` or `sample`
         :type exploration_method: str
@@ -176,15 +179,6 @@ class GPSOptimiser:
         :type stopping_condition: str
         :param update_cycle: how often update GPR hyperparameters
         :type update_cycle: int
-        :param varsigma: expected probability that UCB < f; it controls how
-            "optimistic" we are during the exploration step; at a point x
-            evaluated using GP, the UCB will be: mu(x) + varsigma*sigma(x);
-            varsigma = 1/erfc(p/100) which corresponds to the upper bound of a
-                `p` confidence interval for Gaussian likelihood kernel
-        :type varsigma: float
-        :param gp_lik_sigma: initial std of Gaussian likelihood function (in
-            normalised units)
-        :type gp_lik_sigma: float
         :param n_workers: number of workers to use where applicable
         :type n_workers: int
         :param callbacks: list of (initialised) user-defined callbacks
@@ -195,17 +189,6 @@ class GPSOptimiser:
             which is part of `gpso` and saves results to HDF file, if saver is
             passed, the objective function has to return (result, score)
         :type saver: object|None
-        :**kwargs: keyword arguments
-            - `gp_kernel`: covariance kernel for GPR, Matern52 by default
-            - `gp_kernel_ARD`: whether to use ARD for lengthscales in the GPR
-                kernel, by default False (usually worse, but for large
-                dimensions might help)
-            - `gp_meanf`: mean function for GPR, constant by default
-            - `gp_mu`: initial value for constant mean function in GPR
-            - `gp_length`: initial value for lengthscales in the kernel
-                function in GPR
-            - `gp_var`: initial value for variance in the kernel function in
-                GPR
         """
         assert isinstance(parameter_space, ParameterSpace)
         self.param_space = parameter_space
@@ -231,28 +214,9 @@ class GPSOptimiser:
         assert all(isinstance(callback, GPSOCallback) for callback in callbacks)
         self.callbacks = callbacks
 
-        # GPR model hyperparameters
-        multiplier = (
-            self.param_space.ndim if kwargs.pop("gp_kernel_ARD", False) else 1
-        )
-        lengthscales_prior = multiplier * [
-            kwargs.pop("gp_length", np.sum(NORM_PARAMS_BOUNDS) * 0.25)
-        ]
-        self.gp_surr = GPSurrogate(
-            gp_kernel=kwargs.pop(
-                "gp_kernel",
-                gpflow.kernels.Matern52(
-                    lengthscales=lengthscales_prior,
-                    variance=kwargs.pop("gp_var", 1.0),
-                ),
-            ),
-            gp_meanf=kwargs.pop(
-                "gp_meanf",
-                gpflow.mean_functions.Constant(c=kwargs.pop("gp_mu", 0.0)),
-            ),
-            gauss_likelihood_sigma=gp_lik_sigma,
-            varsigma=varsigma,
-        )
+        # surrogate object
+        self.gp_surr = gp_surrogate or GPRSurrogate.default()
+        assert isinstance(self.gp_surr, GPSurrogate)
 
         # saver
         self.saver = saver
@@ -738,7 +702,7 @@ class GPSOptimiser:
         :type folder: str
         """
         make_dirs(folder)
-        logging.warning(f"When saving, all callbacks and saver will be lost!")
+        logging.warning("When saving, all callbacks and saver will be lost!")
         # save parameter space
         self.param_space.save(os.path.join(folder, self.PARAM_SPACE_FILE))
         # save surrogate
