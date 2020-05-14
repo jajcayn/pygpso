@@ -341,6 +341,35 @@ class GPSurrogate:
         if self.num_gp_based > 0:
             self.gp_predict(self.gp_based_coords)
 
+    def _serialise_optimiser(self):
+        """
+        Serialise optimiser.
+        """
+        optimiser = self.optimiser.__class__.__name__
+        if optimiser == "Scipy":
+            return tuple([optimiser])
+        elif optimiser == "Adam":
+            return (
+                optimiser,
+                float(self.optimiser.get_config()["learning_rate"]),
+            )
+        else:
+            raise ValueError(f"{optimiser} not currently supported.")
+
+    @staticmethod
+    def _deserialse_optimiser(from_json):
+        """
+        Deserialise optimiser.
+
+        :param from_json: tuple from json saved info
+        :type from_json: tuple
+        """
+        optimiser = from_json[0]
+        if optimiser == "Scipy":
+            return gpflow.optimizers.Scipy()
+        elif optimiser == "Adam":
+            return tf.optimizers.Adam(from_json[1])
+
     def save(self, folder):
         """
         Save GPFlow model and list of points. This is intermediate, "hacky"
@@ -426,6 +455,8 @@ class GPRSurrogate(GPSurrogate):
         gp_meanf = getattr(gpflow.mean_functions, gpr_info["gpr_meanf"])(
             np.zeros(gpr_info["gpr_meanf_shape"])
         )
+        # recreate optimiser
+        optimiser = cls._deserialse_optimiser(gpr_info["optimiser"])
 
         # create placeholder model
         gpflow_model = gpflow.models.GPR(
@@ -442,6 +473,7 @@ class GPRSurrogate(GPSurrogate):
         return cls(
             gp_kernel=gp_kernel,
             gp_meanf=gp_meanf,
+            optimiser=optimiser,
             gauss_likelihood_sigma=gpr_info["gp_likelihood"],
             varsigma=gpr_info["gp_varsigma"],
             points=points,
@@ -494,6 +526,7 @@ class GPRSurrogate(GPSurrogate):
             ].shape.as_list(),
             "gp_varsigma": self.gp_varsigma,
             "gp_likelihood": self.gp_lik_sigma,
+            "optimiser": self._serialise_optimiser(),
         }
         with open(os.path.join(folder, self.GPR_INFO), "w") as handle:
             handle.write(json.dumps(save_info))
@@ -502,8 +535,8 @@ class GPRSurrogate(GPSurrogate):
 class VGPSurrogate(GPSurrogate):
     """
     Surrogate exploiting Variational GP model with arbitrary continuous
-    likelihood. VGP uses Adam optimiser to optimise hyperparameters and natural
-    gradients to optimise variational parameters.
+    likelihood. VGP uses one optimiser (usually Adam or Scipy) to optimise
+    hyperparameters and natural gradients to optimise variational parameters.
     """
 
     def __init__(
@@ -511,18 +544,16 @@ class VGPSurrogate(GPSurrogate):
         gp_kernel,
         gp_meanf=None,
         likelihood=gpflow.likelihoods.Gaussian(variance=1.0e-3),
+        optimiser=tf.optimizers.Adam(0.01),
         varsigma=erfcinv(0.01),
         points=None,
         gpflow_model=None,
-        adam_learning_rate=0.01,
         natgrad_learning_rate=1.0,
         train_iterations=VGP_TRAIN_ITERATIONS,
     ):
         """
         :param likelihood: likelihood for VGP model
         :type likelihood: `gpflow.likelihoods.base.ScalarLikelihood`
-        :param adam_learning_rate: learning rate for Adam optimiser
-        :type adam_learning_rate: float
         :param natgrad_learning_rate: step length (gamma) for Natural gradient
         :type natgrad_learning_rate: float
         :param train_iterations: number of iterations for VGP Adam vs NatGrad
@@ -532,7 +563,7 @@ class VGPSurrogate(GPSurrogate):
         super().__init__(
             gp_kernel=gp_kernel,
             gp_meanf=gp_meanf,
-            optimiser=tf.optimizers.Adam(adam_learning_rate),
+            optimiser=optimiser,
             varsigma=varsigma,
             points=points,
             gpflow_model=gpflow_model,
@@ -572,6 +603,8 @@ class VGPSurrogate(GPSurrogate):
         gp_likelihood = getattr(
             gpflow.likelihoods, vgp_info["vgp_likelihood"]
         )()
+        # recreate optimiser
+        optimiser = cls._deserialse_optimiser(vgp_info["optimiser"])
 
         # create placeholder model
         gpflow_model = gpflow.models.VGP(
@@ -590,10 +623,10 @@ class VGPSurrogate(GPSurrogate):
             gp_kernel=gp_kernel,
             gp_meanf=gp_meanf,
             likelihood=gp_likelihood,
+            optimiser=optimiser,
             varsigma=vgp_info["gp_varsigma"],
             points=points,
             gpflow_model=gpflow_model,
-            adam_learning_rate=vgp_info["vgp_adam_lr"],
             natgrad_learning_rate=vgp_info["vgp_natgrad_lr"],
             train_iterations=vgp_info["vgp_iters"],
         )
@@ -622,11 +655,11 @@ class VGPSurrogate(GPSurrogate):
         for i in range(self.train_iters):
             self.natgrad_optimiser.minimize(
                 self.gpflow_model.training_loss,
-                var_list=[(self.gpflow_model.q_mu, self.gpflow_model.q_sqrt)],
+                [(self.gpflow_model.q_mu, self.gpflow_model.q_sqrt)],
             )
             self.optimiser.minimize(
                 self.gpflow_model.training_loss,
-                var_list=self.gpflow_model.trainable_variables,
+                self.gpflow_model.trainable_variables,
             )
             logging.debug(
                 f"VGP iteration {i+1}. ELBO: {self.gpflow_model.elbo():.04f}"
@@ -657,8 +690,8 @@ class VGPSurrogate(GPSurrogate):
             ].shape.as_list(),
             "vgp_likelihood": self.gpflow_model.likelihood.__class__.__name__,
             "gp_varsigma": self.gp_varsigma,
+            "optimiser": self._serialise_optimiser(),
             "vgp_iters": self.train_iters,
-            "vgp_adam_lr": float(self.optimiser.get_config()["learning_rate"]),
             "vgp_natgrad_lr": self.natgrad_optimiser.gamma,
         }
         with open(os.path.join(folder, self.GPR_INFO), "w") as handle:
