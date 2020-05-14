@@ -9,12 +9,14 @@ from collections import namedtuple
 
 import gpflow
 import numpy as np
+import tensorflow as tf
 from scipy.special import erfcinv
 
 from .param_space import NORM_PARAMS_BOUNDS
 from .utils import JSON_EXT, PKL_EXT, PointLabels, load_json, make_dirs
 
 GP_TRAIN_MAX_ITER = 100
+VGP_TRAIN_ITERATIONS = 10
 DUPLICATE_TOLERANCE = 1.0e-12
 GPFLOW_EXT = ".gpflow"
 
@@ -492,6 +494,172 @@ class GPRSurrogate(GPSurrogate):
             ].shape.as_list(),
             "gp_varsigma": self.gp_varsigma,
             "gp_likelihood": self.gp_lik_sigma,
+        }
+        with open(os.path.join(folder, self.GPR_INFO), "w") as handle:
+            handle.write(json.dumps(save_info))
+
+
+class VGPSurrogate(GPSurrogate):
+    """
+    Surrogate exploiting Variational GP model with arbitrary continuous
+    likelihood. VGP uses Adam optimiser to optimise hyperparameters and natural
+    gradients to optimise variational parameters.
+    """
+
+    def __init__(
+        self,
+        gp_kernel,
+        gp_meanf=None,
+        likelihood=gpflow.likelihoods.Gaussian(variance=1.0e-3),
+        varsigma=erfcinv(0.01),
+        points=None,
+        gpflow_model=None,
+        adam_learning_rate=0.01,
+        natgrad_learning_rate=1.0,
+        train_iterations=VGP_TRAIN_ITERATIONS,
+    ):
+        """
+        :param likelihood: likelihood for VGP model
+        :type likelihood: `gpflow.likelihoods.base.ScalarLikelihood`
+        :param adam_learning_rate: learning rate for Adam optimiser
+        :type adam_learning_rate: float
+        :param natgrad_learning_rate: step length (gamma) for Natural gradient
+        :type natgrad_learning_rate: float
+        :param train_iterations: number of iterations for VGP Adam vs NatGrad
+            training loop
+        :type train_iterations: int
+        """
+        super().__init__(
+            gp_kernel=gp_kernel,
+            gp_meanf=gp_meanf,
+            optimiser=tf.optimizers.Adam(adam_learning_rate),
+            varsigma=varsigma,
+            points=points,
+            gpflow_model=gpflow_model,
+        )
+        assert isinstance(likelihood, gpflow.likelihoods.base.ScalarLikelihood)
+        self.likelihood = likelihood
+        self.natgrad_optimiser = gpflow.optimizers.NaturalGradient(
+            natgrad_learning_rate
+        )
+        self.train_iters = train_iterations
+
+    @classmethod
+    def from_saved(cls, folder):
+        # load points
+        points = GPListOfPoints.from_file(os.path.join(folder, cls.POINTS_FILE))
+        # get current data as saved
+        eval_points = [
+            point for point in points if point.label == PointLabels.evaluated
+        ]
+        x = np.array([point.normed_coord for point in eval_points])
+        y = np.array([point.score_mu for point in eval_points])[:, np.newaxis]
+
+        # load GPR info
+        vgp_info = load_json(os.path.join(folder, cls.GPR_INFO))
+        # recreate kernel
+        assert hasattr(gpflow.kernels, vgp_info["vgp_kernel"])
+        gp_kernel = getattr(gpflow.kernels, vgp_info["vgp_kernel"])(
+            lengthscales=np.ones(vgp_info["vgp_kernel_shape"])
+        )
+        # recreate mean function
+        assert hasattr(gpflow.mean_functions, vgp_info["vgp_meanf"])
+        gp_meanf = getattr(gpflow.mean_functions, vgp_info["vgp_meanf"])(
+            np.zeros(vgp_info["vgp_meanf_shape"])
+        )
+        # recreate likelihood
+        assert hasattr(gpflow.likelihoods, vgp_info["vgp_likelihood"])
+        gp_likelihood = getattr(
+            gpflow.likelihoods, vgp_info["vgp_likelihood"]
+        )()
+
+        # create placeholder model
+        gpflow_model = gpflow.models.VGP(
+            data=(x, y),
+            kernel=gp_kernel,
+            mean_function=gp_meanf,
+            likelihood=gp_likelihood,
+            num_latent_gps=1,
+        )
+        # load GPR parameters
+        with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
+            gpr_params = pickle.load(handle)
+        # assign hyperparameters
+        gpflow.utilities.multiple_assign(gpflow_model, gpr_params)
+        return cls(
+            gp_kernel=gp_kernel,
+            gp_meanf=gp_meanf,
+            likelihood=gp_likelihood,
+            varsigma=vgp_info["gp_varsigma"],
+            points=points,
+            gpflow_model=gpflow_model,
+            adam_learning_rate=vgp_info["vgp_adam_lr"],
+            natgrad_learning_rate=vgp_info["vgp_natgrad_lr"],
+            train_iterations=vgp_info["vgp_iters"],
+        )
+
+    def _gp_train(self, x, y):
+        assert x.shape[0] == y.shape[0]
+        assert x.ndim == 2 and y.ndim == 2
+
+        if self.gpflow_model is None:
+            # if None, init model
+            self.gpflow_model = gpflow.models.VGP(
+                data=(x, y),
+                kernel=self.gp_kernel,
+                mean_function=self.gp_meanf,
+                likelihood=self.likelihood,
+                num_latent_gps=1,
+            )
+        else:
+            # just assign new data
+            self.gpflow_model.data = (x, y)
+
+        # training loop
+        gpflow.set_trainable(self.gpflow_model.q_mu, False)
+        gpflow.set_trainable(self.gpflow_model.q_sqrt, False)
+
+        for i in range(self.train_iters):
+            self.natgrad_optimiser.minimize(
+                self.gpflow_model.training_loss,
+                var_list=[(self.gpflow_model.q_mu, self.gpflow_model.q_sqrt)],
+            )
+            self.optimiser.minimize(
+                self.gpflow_model.training_loss,
+                var_list=self.gpflow_model.trainable_variables,
+            )
+            logging.debug(
+                f"VGP iteration {i+1}. ELBO: {self.gpflow_model.elbo():.04f}"
+            )
+
+    def save(self, folder):
+        """
+        :param folder: path to which save the model
+        :type folder: str
+        """
+        make_dirs(folder)
+        # save list of points
+        self.points.save(filename=os.path.join(folder, self.POINTS_FILE))
+        # hack to untie weak references
+        _ = gpflow.utilities.freeze(self.gpflow_model)
+        # save GPR model to pickle - now doable
+        with open(os.path.join(folder, self.GPR_FILE), "wb") as handle:
+            pickle.dump(
+                gpflow.utilities.parameter_dict(self.gpflow_model), handle
+            )
+        # save other info to json
+        save_info = {
+            "vgp_kernel": self.gpflow_model.kernel.__class__.__name__,
+            "vgp_kernel_shape": self.gpflow_model.kernel.lengthscales.shape.as_list(),
+            "vgp_meanf": self.gpflow_model.mean_function.__class__.__name__,
+            "vgp_meanf_shape": self.gpflow_model.mean_function.parameters[
+                0
+            ].shape.as_list(),
+            "vgp_likelihood": self.gpflow_model.likelihood.__class__.__name__,
+            "gp_varsigma": self.gp_varsigma,
+            "vgp_iters": self.train_iters,
+            "vgp_adam_lr": float(self.optimiser.get_config()["learning_rate"]),
+            "vgp_natgrad_lr": self.natgrad_optimiser.gamma,
         }
         with open(os.path.join(folder, self.GPR_INFO), "w") as handle:
             handle.write(json.dumps(save_info))
