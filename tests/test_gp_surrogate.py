@@ -188,6 +188,32 @@ class TestGPSurrogate(unittest.TestCase):
         with pytest.raises(NotImplementedError):
             self.gp_surr.save("")
 
+    def test_serialise_optimiser(self):
+        # scipy optimiser
+        gp_surr = GPSurrogate(
+            gp_kernel=gpflow.kernels.Matern52(),
+            gp_meanf=gpflow.mean_functions.Constant(),
+            optimiser=gpflow.optimizers.Scipy(),
+        )
+        serialised = gp_surr._serialise_optimiser()
+        self.assertTupleEqual(serialised, tuple(["Scipy"]))
+        deserialised = gp_surr._deserialse_optimiser(serialised)
+        self.assertTrue(isinstance(deserialised, gpflow.optimizers.Scipy))
+
+        # Adam optimiser
+        gp_surr = GPSurrogate(
+            gp_kernel=gpflow.kernels.Matern52(),
+            gp_meanf=gpflow.mean_functions.Constant(),
+            optimiser=tf.optimizers.Adam(0.01),
+        )
+        serialised = gp_surr._serialise_optimiser()
+        self.assertTupleEqual(serialised, tuple(["Adam", 0.01]))
+        deserialised = gp_surr._deserialse_optimiser(serialised)
+        self.assertTrue(isinstance(deserialised, tf.optimizers.Adam))
+        self.assertEqual(
+            float(deserialised.get_config()["learning_rate"]), 0.01
+        )
+
 
 class TestGPRSurrogate(unittest.TestCase):
     TEMP_FOLDER = "tests/test_gpsurr"
@@ -349,8 +375,8 @@ class TestVGPSurrogate(unittest.TestCase):
             gp_kernel=gpflow.kernels.Matern52(),
             gp_meanf=gpflow.mean_functions.Constant(),
             likelihood=gpflow.likelihoods.Gaussian(variance=1.0e-3),
+            optimiser=tf.optimizers.Adam(0.01),
             points=points,
-            adam_learning_rate=0.01,
             natgrad_learning_rate=1.0,
             train_iterations=5,
         )
