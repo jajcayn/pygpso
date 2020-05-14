@@ -10,12 +10,14 @@ from shutil import rmtree
 import gpflow
 import numpy as np
 import pytest
+import tensorflow as tf
 from gpso.gp_surrogate import (
     DUPLICATE_TOLERANCE,
     GPListOfPoints,
     GPPoint,
     GPRSurrogate,
     GPSurrogate,
+    VGPSurrogate,
 )
 from gpso.utils import JSON_EXT, PointLabels
 
@@ -188,7 +190,7 @@ class TestGPSurrogate(unittest.TestCase):
 
 
 class TestGPRSurrogate(unittest.TestCase):
-    TEMP_FOLDER = "test_gpsurr"
+    TEMP_FOLDER = "tests/test_gpsurr"
 
     def _create_gprsurrogate(self, init_points=0, seed=None):
         if init_points > 0:
@@ -311,6 +313,149 @@ class TestGPRSurrogate(unittest.TestCase):
         # assert varsigma, likelihood and points
         self.assertEqual(self.gp_surr.gp_varsigma, loaded.gp_varsigma)
         self.assertEqual(self.gp_surr.gp_lik_sigma, loaded.gp_lik_sigma)
+        self.assertListEqual(self.gp_surr.points, loaded.points)
+
+        # remove test dir
+        rmtree(self.TEMP_FOLDER)
+
+
+class TestVGPSurrogate(unittest.TestCase):
+    TEMP_FOLDER = "tests/test_gpsurr"
+
+    def _seed(self):
+        np.random.seed(42)
+        tf.random.set_seed(42)
+
+    def _create_gprsurrogate(self, init_points=0, seed=None):
+        if init_points > 0:
+            points = []
+            for i in range(init_points):
+                if seed is not None:
+                    np.random.seed(seed + i)
+                points.append(
+                    GPPoint(
+                        normed_coord=np.random.rand(2),
+                        score_mu=np.random.rand(),
+                        score_sigma=np.random.rand(),
+                        score_ucb=np.random.rand(),
+                        label=PointLabels(
+                            np.random.choice([1, 2], p=[0.8, 0.2])
+                        ),
+                    )
+                )
+        else:
+            points = None
+        self.gp_surr = VGPSurrogate(
+            gp_kernel=gpflow.kernels.Matern52(),
+            gp_meanf=gpflow.mean_functions.Constant(),
+            likelihood=gpflow.likelihoods.Gaussian(variance=1.0e-3),
+            points=points,
+            adam_learning_rate=0.01,
+            natgrad_learning_rate=1.0,
+            train_iterations=5,
+        )
+
+    def test_init(self):
+        # init empty
+        self._create_gprsurrogate(init_points=0)
+        self.assertTrue(isinstance(self.gp_surr, VGPSurrogate))
+        self.assertTrue(isinstance(self.gp_surr.points, GPListOfPoints))
+        self.assertEqual(len(self.gp_surr.points), 0)
+        # init with points
+        NUM_INIT_POINTS = 10
+        self._create_gprsurrogate(init_points=NUM_INIT_POINTS)
+        self.assertTrue(isinstance(self.gp_surr, VGPSurrogate))
+        self.assertTrue(isinstance(self.gp_surr.points, GPListOfPoints))
+        self.assertEqual(len(self.gp_surr.points), NUM_INIT_POINTS)
+
+    def test_gp_train(self):
+        self._seed()
+        NUM_INIT_POINTS = 10
+        self._create_gprsurrogate(init_points=NUM_INIT_POINTS, seed=42)
+        x_train, y_train = self.gp_surr.current_training_data
+        self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
+        EXP_MEAN = 0.67828200
+        EXP_VAR = 0.03861295
+        mean, var = self.gp_surr.gpflow_model.predict_y(np.array([[0.5, 0.5]]))
+        self.assertEqual(float(np.around(mean, decimals=8)), EXP_MEAN)
+        self.assertEqual(float(np.around(var, decimals=8)), EXP_VAR)
+
+    def test_gp_train_and_predict(self):
+        self._seed()
+        NUM_INIT_POINTS = 10
+        PREDICT_AT = np.array([[0.5, 0.5]])
+        EXP_MEAN = 0.67828200
+        EXP_VAR = 0.03861295
+        self._create_gprsurrogate(init_points=NUM_INIT_POINTS, seed=42)
+        x_train, y_train = self.gp_surr.current_training_data
+        self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
+        self.gp_surr.gp_predict(PREDICT_AT)
+        # test if point was appended
+        self.assertEqual(len(self.gp_surr.points), NUM_INIT_POINTS + 1)
+        appended_point = self.gp_surr.points[-1]
+        # test point attributes
+        np.testing.assert_equal(
+            appended_point.normed_coord, PREDICT_AT.squeeze()
+        )
+        self.assertEqual(
+            float(np.around(appended_point.score_mu, decimals=8)), EXP_MEAN
+        )
+        self.assertEqual(
+            float(np.around(appended_point.score_sigma, decimals=8)), EXP_VAR
+        )
+
+    def test_gp_eval_best_ucb(self):
+        self._seed()
+        NUM_INIT_POINTS = 10
+        PREDICT_AT = np.array([[0.5, 0.5]])
+        EXP_MEAN = 0.67828200
+        EXP_VAR = 0.03861295
+        self._create_gprsurrogate(init_points=NUM_INIT_POINTS, seed=42)
+        EXP_UCB = np.around(
+            EXP_MEAN + self.gp_surr.gp_varsigma * EXP_VAR, decimals=8
+        )
+        x_train, y_train = self.gp_surr.current_training_data
+        self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
+        best_score = self.gp_surr.gp_eval_best_ucb(PREDICT_AT)
+        self.assertEqual(float(np.around(best_score[0], decimals=8)), EXP_MEAN)
+        self.assertEqual(float(np.around(best_score[1], decimals=8)), EXP_VAR)
+        self.assertEqual(float(np.around(best_score[2], decimals=8)), EXP_UCB)
+        # assert no point was added
+        self.assertEqual(len(self.gp_surr.points), NUM_INIT_POINTS)
+
+    def test_save_load(self):
+        self._seed()
+        NUM_INIT_POINTS = 10
+        # create class and train the GPR
+        self._create_gprsurrogate(init_points=NUM_INIT_POINTS, seed=42)
+        x_train, y_train = self.gp_surr.current_training_data
+        self.gp_surr._gp_train(x=x_train, y=y_train[:, np.newaxis])
+        # save class (model and list of points)
+        self.gp_surr.save(self.TEMP_FOLDER)
+
+        # load class
+        loaded = VGPSurrogate.from_saved(self.TEMP_FOLDER)
+        self.assertTrue(isinstance(loaded, VGPSurrogate))
+        # assert VGP parameters
+        for (key_orig, val_orig), (key_loaded, val_loaded) in zip(
+            gpflow.utilities.parameter_dict(self.gp_surr.gpflow_model).items(),
+            gpflow.utilities.parameter_dict(loaded.gpflow_model).items(),
+        ):
+            self.assertEqual(key_orig, key_loaded)
+            self.assertTrue((val_orig.numpy() == val_loaded.numpy()).all())
+        # do test prediction with VGP model
+        test_points = [
+            point
+            for point in self.gp_surr.points
+            if point.label == PointLabels.evaluated
+        ]
+        x = np.array([point.normed_coord for point in test_points])
+        mean_orig, var_orig = self.gp_surr.gpflow_model.predict_y(x)
+        mean_loaded, var_loaded = loaded.gpflow_model.predict_y(x)
+        np.testing.assert_equal(mean_orig.numpy(), mean_loaded.numpy())
+        np.testing.assert_equal(var_orig.numpy(), var_loaded.numpy())
+        # assert varsigma and points
+        self.assertEqual(self.gp_surr.gp_varsigma, loaded.gp_varsigma)
         self.assertListEqual(self.gp_surr.points, loaded.points)
 
         # remove test dir
