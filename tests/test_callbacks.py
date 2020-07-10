@@ -28,7 +28,7 @@ class DummyCallback(GPSOCallback):
 class TestBaseCallback(unittest.TestCase):
     def test_init(self):
         # first test that assertion is raised when callback_type is None
-        with pytest.raises(AssertionError):
+        with pytest.raises((AssertionError, TypeError)):
             callback = GPSOCallback()
         # now test actual callback with properly defined callback_type
         callback = DummyCallback()
