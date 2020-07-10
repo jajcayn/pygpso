@@ -84,7 +84,7 @@ Support of saver (for saving models run, e.g. timeseries along with the optimisa
 ## Final notes
 When you encounter a bug or have any idea for an improvement, please open an issue and/or contact me.
 
-When using this package in publications, please cite the original Jonathan's paper as
+When using this package in publications, please cite the original Jonathan's paper for the methodology as
 ```bibtex
 @article{hadida2018bayesian,
   title={Bayesian Optimisation of Large-Scale Biophysical Networks},
@@ -96,4 +96,4 @@ When using this package in publications, please cite the original Jonathan's pap
   publisher={Elsevier}
 }
 ```
-and acknowledge the usage of this via its DOI: [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676).
+and acknowledge the usage of this software via its DOI: [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676). After clicking, you will see citation data.
