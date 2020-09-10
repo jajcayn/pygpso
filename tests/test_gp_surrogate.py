@@ -321,10 +321,12 @@ class TestGPRSurrogate(unittest.TestCase):
         loaded = GPRSurrogate.from_saved(self.TEMP_FOLDER)
         self.assertTrue(isinstance(loaded, GPRSurrogate))
         # assert GPR parameters
-        self.assertDictEqual(
-            gpflow.utilities.parameter_dict(self.gp_surr.gpflow_model),
-            gpflow.utilities.parameter_dict(loaded.gpflow_model),
-        )
+        for (key_orig, val_orig), (key_loaded, val_loaded) in zip(
+            gpflow.utilities.parameter_dict(self.gp_surr.gpflow_model).items(),
+            gpflow.utilities.parameter_dict(loaded.gpflow_model).items(),
+        ):
+            self.assertEqual(key_orig, key_loaded)
+            self.assertTrue((val_orig.numpy() == val_loaded.numpy()).all())
         # do test prediction with GPR model
         test_points = [
             point
