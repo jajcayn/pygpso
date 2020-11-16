@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/jajcayn/pygpso.svg?branch=master)](https://travis-ci.com/jajcayn/pygpso) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples) [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Build Status](https://github.com/jajcayn/pygpso/workflows/pytest/badge.svg)](https://github.com/jajcayn/pygpso/actions)![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples) [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # pyGPSO
 *Optimise anything (but mainly large-scale biophysical models) using Gaussian Processes surrogate*
@@ -77,9 +77,9 @@ Gaussian Processes regression uses normalised coordinates within the bounds [0, 
 Plotting of the ternary tree (`gpso.plotting.plot_ternary_tree()`) requires `igraph` package, whose layout function is exploited. If you want to see the resulting beautiful tree, please install `python-igraph`.
 
 Support of saver (for saving models run, e.g. timeseries along with the optimisation) is provided by `PyTables` (and `pandas` if you're saving results to `DataFrame`s).
- 
+
 ## Known bugs and future improvements
-* saving of GP surrogate is now hacky, as `GPFlow` not yet officially supports saving / loading of the models due to [bug in `tensorflow`](https://github.com/tensorflow/tensorflow/issues/34908). The hacky way, unfortunately, only supports basic kernels and mean functions, i.e. no kernel operations (such as sum or multiplication) allowed (for now).
+* saving of GP surrogate is now hacky, as `GPFlow` supports only saving model for future prediction but AFAIK they cannot be trained anymore, since the information on kernels and mean-functions are not saved (only the trained weights in the computational graph). Thus, `pyGPSO` still relies on hacky saving to `pkl` files and recreating kernels and mean-function on-the-go when loading from saved.
 
 ## Final notes
 When you encounter a bug or have any idea for an improvement, please open an issue and/or contact me.
