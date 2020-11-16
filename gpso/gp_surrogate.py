@@ -4,9 +4,9 @@ Surrogate of the objective function using GPR.
 import json
 import logging
 import os
-import pickle
 from collections import namedtuple
 
+import dill
 import gpflow
 import numpy as np
 import tensorflow as tf
@@ -422,7 +422,8 @@ class GPRSurrogate(GPSurrogate):
         """
         return cls(
             gp_kernel=gpflow.kernels.Matern52(
-                lengthscales=np.sum(NORM_PARAMS_BOUNDS) * 0.25, variance=1.0,
+                lengthscales=np.sum(NORM_PARAMS_BOUNDS) * 0.25,
+                variance=1.0,
             ),
             gp_meanf=gpflow.mean_functions.Constant(0.0),
             optimiser=gpflow.optimizers.Scipy(),
@@ -467,7 +468,7 @@ class GPRSurrogate(GPSurrogate):
         )
         # load GPR parameters
         with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
-            gpr_params = pickle.load(handle)
+            gpr_params = dill.load(handle)
         # assign hyperparameters
         gpflow.utilities.multiple_assign(gpflow_model, gpr_params)
         return cls(
@@ -513,7 +514,7 @@ class GPRSurrogate(GPSurrogate):
         _ = gpflow.utilities.freeze(self.gpflow_model)
         # save GPR model to pickle - now doable
         with open(os.path.join(folder, self.GPR_FILE), "wb") as handle:
-            pickle.dump(
+            dill.dump(
                 gpflow.utilities.parameter_dict(self.gpflow_model), handle
             )
         # save other info to json
@@ -616,7 +617,7 @@ class VGPSurrogate(GPSurrogate):
         )
         # load GPR parameters
         with open(os.path.join(folder, cls.GPR_FILE), "rb") as handle:
-            gpr_params = pickle.load(handle)
+            gpr_params = dill.load(handle)
         # assign hyperparameters
         gpflow.utilities.multiple_assign(gpflow_model, gpr_params)
         return cls(
@@ -677,7 +678,7 @@ class VGPSurrogate(GPSurrogate):
         _ = gpflow.utilities.freeze(self.gpflow_model)
         # save GPR model to pickle - now doable
         with open(os.path.join(folder, self.GPR_FILE), "wb") as handle:
-            pickle.dump(
+            dill.dump(
                 gpflow.utilities.parameter_dict(self.gpflow_model), handle
             )
         # save other info to json
