@@ -326,7 +326,7 @@ class TestGPRSurrogate(unittest.TestCase):
             gpflow.utilities.parameter_dict(loaded.gpflow_model).items(),
         ):
             self.assertEqual(key_orig, key_loaded)
-            self.assertTrue((val_orig.numpy() == val_loaded.numpy()).all())
+            np.testing.assert_allclose(val_orig.numpy(), val_loaded.numpy())
         # do test prediction with GPR model
         test_points = [
             point
@@ -470,7 +470,7 @@ class TestVGPSurrogate(unittest.TestCase):
             gpflow.utilities.parameter_dict(loaded.gpflow_model).items(),
         ):
             self.assertEqual(key_orig, key_loaded)
-            self.assertTrue((val_orig.numpy() == val_loaded.numpy()).all())
+            np.testing.assert_allclose(val_orig.numpy(), val_loaded.numpy())
         # do test prediction with VGP model
         test_points = [
             point

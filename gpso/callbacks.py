@@ -140,7 +140,8 @@ class GPFlowCheckpoints(GPSOCallback):
         self.n_evals.assign(optimiser.n_eval_counter)
         if self.first_update:
             ckpt = tf.train.Checkpoint(
-                model=optimiser.gp_surr.gpflow_model, evluations=self.n_evals,
+                model=optimiser.gp_surr.gpflow_model,
+                evluations=self.n_evals,
             )
             self.manager = tf.train.CheckpointManager(
                 ckpt, self.path, max_to_keep=self.max_to_keep

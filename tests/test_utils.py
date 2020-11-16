@@ -28,7 +28,7 @@ class TestUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        os.makedirs(cls.TEMP_FOLDER)
+        os.makedirs(cls.TEMP_FOLDER, exist_ok=True)
 
     @classmethod
     def tearDownClass(cls):
