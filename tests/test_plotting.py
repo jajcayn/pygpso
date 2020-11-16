@@ -51,7 +51,8 @@ class TestPlotting(unittest.TestCase):
         X_BOUNDS = [-3, 5]
         Y_BOUNDS = [-3, 3]
         space = ParameterSpace(
-            parameter_names=["x", "y"], parameter_bounds=[X_BOUNDS, Y_BOUNDS],
+            parameter_names=["x", "y"],
+            parameter_bounds=[X_BOUNDS, Y_BOUNDS],
         )
         opt = GPSOptimiser(
             parameter_space=space,
@@ -66,7 +67,7 @@ class TestPlotting(unittest.TestCase):
         # save optimised problem
         cls.opt_done = opt
         # make directory
-        os.makedirs(cls.TEMP_FOLDER)
+        os.makedirs(cls.TEMP_FOLDER, exist_ok=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -82,7 +83,8 @@ class TestPlotting(unittest.TestCase):
 
         FILENAME = os.path.join(self.TEMP_FOLDER, "tree.png")
         plot_ternary_tree(
-            self.opt_done.param_space, fname=FILENAME,
+            self.opt_done.param_space,
+            fname=FILENAME,
         )
         self.assertTrue(os.path.exists(FILENAME))
 
@@ -101,13 +103,17 @@ class TestPlotting(unittest.TestCase):
 
         with pytest.raises(ValueError):
             plot_parameter_marginal_distributions(
-                self.opt_done, percentile=0.1, plot_type="abcd", fname=None,
+                self.opt_done,
+                percentile=0.1,
+                plot_type="abcd",
+                fname=None,
             )
 
     def test_plot_conditional_surrogate_distributions(self):
         FILENAME = os.path.join(self.TEMP_FOLDER, "cond_surr.png")
         plot_conditional_surrogate_distributions(
-            self.opt_done, fname=FILENAME,
+            self.opt_done,
+            fname=FILENAME,
         )
         self.assertTrue(os.path.exists(FILENAME))
 

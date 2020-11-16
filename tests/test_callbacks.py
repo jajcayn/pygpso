@@ -84,14 +84,15 @@ class TestCallbacks(unittest.TestCase):
         Optimise example problem as test starts. We need to plot something..
         """
         # make directory
-        os.makedirs(TEMP_FOLDER)
-        os.makedirs(os.path.join(TEMP_FOLDER, "checkpoints"))
+        os.makedirs(TEMP_FOLDER, exist_ok=True)
+        os.makedirs(os.path.join(TEMP_FOLDER, "checkpoints"), exist_ok=True)
         X_BOUNDS = [-3, 5]
         Y_BOUNDS = [-3, 3]
         set_logger(log_filename=os.path.join(TEMP_FOLDER, cls.LOG_FILENAME))
 
         space = ParameterSpace(
-            parameter_names=["x", "y"], parameter_bounds=[X_BOUNDS, Y_BOUNDS],
+            parameter_names=["x", "y"],
+            parameter_bounds=[X_BOUNDS, Y_BOUNDS],
         )
         opt = GPSOptimiser(
             parameter_space=space,

@@ -120,7 +120,7 @@ class TestGPSOptimiser(unittest.TestCase):
         """
         Basic optimisation with saving and loading optimiser in between.
         """
-        os.makedirs(TEMP_FOLDER)
+        os.makedirs(TEMP_FOLDER, exist_ok=True)
         space = ParameterSpace(
             parameter_names=["x", "y"],
             parameter_bounds=[self.X_BOUNDS, self.Y_BOUNDS],
