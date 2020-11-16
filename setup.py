@@ -18,14 +18,14 @@ for req in extra_reqs:
 
 setuptools.setup(
     name="pygpso",
-    version="0.5.1",
+    version="0.6",
     description="Bayesian optimisation method leveraging Gaussian Processes "
     "surrogate",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jajcayn/pygpso",
     author="Nikola Jajcay",
-    author_email="nikola.jajcay@gmail.com",
+    author_email="nikola.jajcay@protonmail.com",
     license="MIT",
     packages=setuptools.find_packages(),
     classifiers=[
