@@ -48,7 +48,7 @@ def plot_ternary_tree(
     :type param_space: `gpso.param_space.ParameterSpace`
     :param cmap: colormap for scores
     :type cmap: str
-    :param cmap_limits: limits for the colormapping of the scores, if None will
+    :param cmap_limits: limits for the color mapping of the scores, if None will
         be inferred from the data
     :param center_root_node: whether to center root node within the figure -
         graph might become less readable

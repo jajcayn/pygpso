@@ -1,6 +1,7 @@
 [![Build Status](https://github.com/jajcayn/pygpso/workflows/pytest/badge.svg)](https://github.com/jajcayn/pygpso/actions) ![](https://img.shields.io/github/v/release/jajcayn/pygpso) [![codecov](https://codecov.io/gh/jajcayn/pygpso/branch/master/graph/badge.svg)](https://codecov.io/gh/jajcayn/pygpso) [![PyPI license](https://img.shields.io/pypi/l/pygpso.svg)](https://pypi.python.org/pypi/pygpso/) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples) [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # pyGPSO
+
 *Optimise anything (but mainly large-scale biophysical models) using Gaussian Processes surrogate*
 
 `pyGPSO` is a python package for Gaussian-Processes Surrogate Optimisation. GPSO is a Bayesian optimisation method designed to cope with costly, high-dimensional, non-convex problems by switching between exploration of the parameter space (using partition tree) and exploitation of the gathered knowledge (by training the surrogate function using Gaussian Processes regression). The motivation for this method stems from the optimisation of large-scale biophysical models in neuroscience when the modelled data should match the experimental one. This package leverages [`GPFlow`](https://github.com/GPflow/GPflow) for training and predicting the Gaussian Processes surrogate.
@@ -21,17 +22,32 @@ Example of ternary partition tree after optimisation.
 
 ## Installation
 
-`GPSO` package is tested and should run without any problems on python versions 3.6 -- 3.8.
+`GPSO` package is tested and should run without any problems on python versions 3.6 -- 3.9.
+
+### Note on python3.9 with macOS
+
+Installing `pytables` might give you hdf5 errors. If this is the case, please do
+
+```bash
+brew install hdf5 c-blosc
+```
+
+and all should work like a charm afterwards.
 
 ### One-liner
+
 For those who want to optimise right away just
+
 ```bash
 pip install pygpso
 ```
+
 and go ahead! Make sure to check example notebooks in [the **examples** directory](examples/) to see how it works and what it can do. Or, alternatively, you can run interactive notebooks in binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples)
 
 ### Go proper
+
 When you are the type of girl or guy who likes to install packages properly, start by cloning (or forking) this repository, then installing all the dependencies and finally install the package itself
+
 ```bash
 git clone https://github.com/jajcayn/pygpso
 cd pygpso/
@@ -40,15 +56,19 @@ pip install -r requirements.txt
 pip install -r requirements_optional.txt
 pip install .
 ```
+
 Don't forget to test!
+
 ```bash
 pytest
 ```
 
 ## Usage
+
 A guide on how to optimise and what can be done using this package is given as jupyter notebooks in [the **examples** directory](examples/). You can also try them out live thanks to binder: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jajcayn/pygpso.git/master?filepath=examples).
 
 The basic idea is to initialise the parameter space in which the optimisation is to be run and then iteratively dig deeper and evaluate the objective function when necessary
+
 ```python
 from gpso import ParameterSpace, GPSOptimiser
 
@@ -72,6 +92,7 @@ best_point = opt.run(objective_function)
 The package also offers plotting functions for visualising the results. Again, those are documented and showcased in [the **examples** directory](examples/).
 
 ### Notes
+
 Gaussian Processes regression uses normalised coordinates within the bounds [0, 1]. All normalisation and de-normalisation is done automatically, however when you want to call `predict_y` on GPR model, do not forget to pass normalised coordinates. The normalisation is handled by `sklearn.MinMaxScaler` and `ParameterSpace` instance offers a convenience functions for this: `ParameterSpace.normalise_coords(orig_coords)` and `ParameterSpace.denormalise_coords(normed_coords)`.
 
 Plotting of the ternary tree (`gpso.plotting.plot_ternary_tree()`) requires `igraph` package, whose layout function is exploited. If you want to see the resulting beautiful tree, please install `python-igraph`.
@@ -79,12 +100,15 @@ Plotting of the ternary tree (`gpso.plotting.plot_ternary_tree()`) requires `igr
 Support of saver (for saving models run, e.g. timeseries along with the optimisation) is provided by `PyTables` (and `pandas` if you're saving results to `DataFrame`s).
 
 ## Known bugs and future improvements
+
 * saving of GP surrogate is now hacky, as `GPFlow` supports only saving model for future prediction but AFAIK they cannot be trained anymore, since the information on kernels and mean-functions are not saved (only the trained weights in the computational graph). Thus, `pyGPSO` still relies on hacky saving to `pkl` files and recreating kernels and mean-function on-the-go when loading from saved.
 
 ## Final notes
+
 When you encounter a bug or have any idea for an improvement, please open an issue and/or contact me.
 
 When using this package in publications, please cite the original Jonathan's paper for the methodology as
+
 ```bibtex
 @article{hadida2018bayesian,
   title={Bayesian Optimisation of Large-Scale Biophysical Networks},
@@ -96,4 +120,5 @@ When using this package in publications, please cite the original Jonathan's pap
   publisher={Elsevier}
 }
 ```
+
 and acknowledge the usage of this software via its DOI: [![DOI](https://zenodo.org/badge/236983676.svg)](https://zenodo.org/badge/latestdoi/236983676). After clicking, you will see citation data.

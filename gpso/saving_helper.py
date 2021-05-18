@@ -25,7 +25,7 @@ class TableSaver:
         :param filename: filename for the HDF file
         :type filename: str
         :param extras: extras to write as a group into HDF file, e.g. default
-            parameters of the model, which are not subject to optimisaion
+            parameters of the model, which are not subject to optimisation
         :type extras: dict|None
         """
         if not filename.endswith(H5_EXT):
@@ -54,7 +54,7 @@ class TableSaver:
         :param result: result(s) of the run, can be single result or multiple
             results (same parameters, different results, typically valid for
             stochastic systems)
-        :type result: any pytables supported + pd.DataFrame|list of thereof
+        :type result: any `pytables` supported + pd.DataFrame|list of thereof
         :param score: score(s) of the run
         :type score: float|list[float]
         :param parameters: parameters for this particular run(s)
@@ -100,7 +100,7 @@ class TableSaver:
         :param group: group to write to
         :type group: `tables.group.Group`
         :param result: result to write
-        :type result: any pytables supported + pd.DataFrame
+        :type result: any `pytables` supported + pd.DataFrame
         :param score: score to write
         :type score: float
         """
@@ -138,7 +138,7 @@ def table_reader(filename):
 
     :param filename: filename of the HDF file
     :type filename: str
-    :return: results, scores, parameters and extras if present; if mutliple
+    :return: results, scores, parameters and extras if present; if multiple
         runs per parameter set, that item is a list itself
     :rtype: (list,list,list,dict|None)
     """
