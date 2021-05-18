@@ -23,6 +23,13 @@ Example of ternary partition tree after optimisation.
 
 `GPSO` package is tested and should run without any problems on python versions 3.6 -- 3.9.
 
+### Note on python3.9 with macOS
+Installing `pytables` might give you hdf5 errors. If this is the case, please do
+```bash
+brew install hdf5 c-blosc
+```
+and all should work like a charm afterwards.
+
 ### One-liner
 For those who want to optimise right away just
 ```bash
