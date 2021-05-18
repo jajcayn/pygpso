@@ -257,7 +257,8 @@ class LeafNode(NodeMixin):
     def ternary_split(self):
         """
         Parcellate this leaf using the ternary split function along the largest
-        dimension. For discussion why ternary is the best choise see the paper.
+        dimension. For the discussion on why ternary is the best choice, see the
+        paper.
 
         Hadida, J., Sotiropoulos, S. N., Abeysuriya, R. G., Woolrich, M. W., &
             Jbabdi, S. (2018). Bayesian Optimisation of Large-Scale Biophysical
@@ -436,7 +437,7 @@ class ParameterSpace(LeafNode):
 
     def denormalise_coords(self, normed_coords):
         """
-        Deormalise normed coordinates.
+        Denormalise normed coordinates.
 
         :param normed_coords: normed coordinates in the parameter space as
             [n points x ndim]
