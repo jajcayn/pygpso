@@ -22,6 +22,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install MacOS dependencies
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          set -e
+          brew update
+          brew install hdf5 c-blosc
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

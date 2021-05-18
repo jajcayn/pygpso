@@ -21,7 +21,7 @@ Example of ternary partition tree after optimisation.
 
 ## Installation
 
-`GPSO` package is tested and should run without any problems on python versions 3.6 -- 3.8.
+`GPSO` package is tested and should run without any problems on python versions 3.6 -- 3.9.
 
 ### One-liner
 For those who want to optimise right away just

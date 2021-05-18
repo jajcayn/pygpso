@@ -141,7 +141,7 @@ class GPFlowCheckpoints(GPSOCallback):
         if self.first_update:
             ckpt = tf.train.Checkpoint(
                 model=optimiser.gp_surr.gpflow_model,
-                evluations=self.n_evals,
+                evaluations=self.n_evals,
             )
             self.manager = tf.train.CheckpointManager(
                 ckpt, self.path, max_to_keep=self.max_to_keep
@@ -150,4 +150,4 @@ class GPFlowCheckpoints(GPSOCallback):
             self.first_update = False
         else:
             saved_to = self.manager.save()
-        logging.debug(f"Checkppoint saved to {saved_to}")
+        logging.debug(f"Checkpoint saved to {saved_to}")
